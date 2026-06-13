@@ -38,3 +38,31 @@ data class SolicitudAdopcion(
     val fecha: String = "",
     val mensaje: String = ""
 )
+
+data class PerroPerdido(
+    val id: String = "",
+    val nombre: String = "",
+    val raza: String = "",
+    val color: String = "",
+    val descripcion: String = "",
+    val fotoUri: String = "",
+    val zona: String = "",
+    val contacto: String = "",
+    val fechaPerdido: String = "",
+    val reporteroId: String = "",
+    val latitud: Double? = null,
+    val longitud: Double? = null,
+    val estado: String = "perdido" // "perdido", "encontrado"
+)
+
+data class ArticuloDonacion(
+    val id: String = "",
+    val nombre: String = "",
+    val descripcion: String = "",
+    val categoria: String = "", // "Camas", "Correas", "Comida", "Juguetes"
+    val fotoUri: String = "",
+    val donanteNombre: String = "",
+    val donanteId: String = "",
+    val fechaPublicacion: String = "",
+    val estado: String = "disponible" // "disponible", "entregado"
+)

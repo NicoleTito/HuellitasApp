@@ -22,6 +22,15 @@ val AmarilloAlerta    = Color(0xFFFFC107)
 val RojoError         = Color(0xFFE53935)
 val BlancoPuro        = Color(0xFFFFFFFF)
 
+// --- Colores para Tarjetas del Menú ---
+val ColorMatchBg      = Color(0xFFE67E5D) // Naranja coral
+val ColorDonarBg      = Color(0xFFD7E5A4) // Verde lima suave
+val ColorDonarTexto   = Color(0xFF5A6632) // Verde oscuro
+val ColorIconoAdoptar = Color(0xFFFDE7E1) // Rosado suave lupa
+val ColorIconoApoyo   = Color(0xFFE8EAF6) // Gris azulado mano
+
+
+
 private val HuellitasColorScheme = lightColorScheme(
     primary          = NaranjaHuellitas,
     onPrimary        = BlancoPuro,

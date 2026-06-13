@@ -1,10 +1,11 @@
 package com.huellitas.app.ui.screens.maps
 
 import android.content.Intent
-import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -49,7 +51,7 @@ fun MapaAlberguesScreen(
                 title = { Text("Albergues cercanos", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
-                        Icon(Icons.Default.ArrowBack, "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = CremaBg)
@@ -57,6 +59,8 @@ fun MapaAlberguesScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
+            // MODO DE PRUEBA: Comentamos el mapa real para que la app corra sin API Key
+            /*
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
@@ -73,6 +77,28 @@ fun MapaAlberguesScreen(
                                 false
                             }
                         )
+                    }
+                }
+            }
+            */
+
+            // PLACEHOLDER TEMPORAL (Para poder correr la app sin API Key)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Vista de Mapa (Deshabilitada temporalmente)", fontWeight = FontWeight.Bold)
+                    Text("Configura tu API Key para ver el mapa real.", fontSize = 12.sp)
+                    Spacer(Modifier.height(20.dp))
+                    
+                    // Botón de prueba para simular que seleccionas un albergue
+                    Button(onClick = { 
+                        if (albergues.isNotEmpty()) albergueSeleccionado = albergues.first() 
+                    }) {
+                        Text("Simular selección de albergue")
                     }
                 }
             }
@@ -96,7 +122,7 @@ fun MapaAlberguesScreen(
                         Spacer(Modifier.height(12.dp))
                         Button(
                             onClick = {
-                                val uri = Uri.parse("google.navigation:q=${albergue.latitud},${albergue.longitud}")
+                                val uri = "google.navigation:q=${albergue.latitud},${albergue.longitud}".toUri()
                                 val intent = Intent(Intent.ACTION_VIEW, uri)
                                 intent.setPackage("com.google.android.apps.maps")
                                 context.startActivity(intent)

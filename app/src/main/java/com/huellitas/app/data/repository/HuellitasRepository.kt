@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import com.huellitas.app.data.model.PerroAdopcion
+import com.huellitas.app.data.model.PerroPerdido
 import com.huellitas.app.data.model.SolicitudAdopcion
 import com.huellitas.app.data.model.Usuario
 import kotlinx.coroutines.tasks.await
@@ -170,4 +171,58 @@ class HuellitasRepository {
 
     private fun fechaActual(): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+    // ─────────────────────────────────────────
+    //  PERROS PERDIDOS
+    // ─────────────────────────────────────────
+
+    suspend fun reportarPerroPerdido(perro: PerroPerdido): String {
+        val docRef = db.collection("lost_pets").document()
+        val finalPerro = perro.copy(id = docRef.id, fechaPerdido = fechaActual())
+        docRef.set(finalPerro).await()
+        return docRef.id
+    }
+
+    suspend fun obtenerPerrosPerdidos(): List<PerroPerdido> {
+        return try {
+            val snapshot = db.collection("lost_pets")
+                .whereEqualTo("estado", "perdido")
+                .orderBy("fechaPerdido", Query.Direction.DESCENDING)
+                .get().await()
+            snapshot.toObjects(PerroPerdido::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    // ─────────────────────────────────────────
+    //  ARTÍCULOS DE DONACIÓN
+    // ─────────────────────────────────────────
+
+    suspend fun agregarDonacion(articulo: com.huellitas.app.data.model.ArticuloDonacion): Result<String> {
+        return try {
+            val docRef = db.collection("donations").document()
+            val finalArticulo = articulo.copy(id = docRef.id, fechaPublicacion = fechaActual())
+            docRef.set(finalArticulo).await()
+            Result.success(docRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun obtenerDonaciones(categoria: String = ""): List<com.huellitas.app.data.model.ArticuloDonacion> {
+        return try {
+            var query: Query = db.collection("donations")
+                .whereEqualTo("estado", "disponible")
+
+            if (categoria.isNotBlank() && categoria != "Todo") {
+                query = query.whereEqualTo("categoria", categoria)
+            }
+
+            val snapshot = query.orderBy("fechaPublicacion", Query.Direction.DESCENDING).get().await()
+            snapshot.toObjects(com.huellitas.app.data.model.ArticuloDonacion::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
