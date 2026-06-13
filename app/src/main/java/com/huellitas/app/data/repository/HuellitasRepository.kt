@@ -66,6 +66,17 @@ class HuellitasRepository {
         }
     }
 
+    suspend fun obtenerAlbergues(): List<Usuario> {
+        return try {
+            val snapshot = db.collection("users")
+                .whereEqualTo("rol", "albergue")
+                .get().await()
+            snapshot.toObjects(Usuario::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     // ─────────────────────────────────────────
     //  PERROS EN ADOPCIÓN
     // ─────────────────────────────────────────

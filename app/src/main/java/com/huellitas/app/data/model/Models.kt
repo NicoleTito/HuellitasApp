@@ -8,7 +8,11 @@ data class Usuario(
     val rol: String = "dueño",       // "dueño", "voluntario", "albergue"
     val telefono: String = "",
     val fotoUri: String = "",
-    val fechaRegistro: String = ""
+    val fechaRegistro: String = "",
+    // Coordenadas para albergues
+    val latitud: Double? = null,
+    val longitud: Double? = null,
+    val direccion: String = ""
 )
 
 data class PerroAdopcion(

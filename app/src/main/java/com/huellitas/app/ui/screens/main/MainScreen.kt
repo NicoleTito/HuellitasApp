@@ -23,6 +23,7 @@ fun MainScreen(
     usuario: Usuario,
     onIrAPerfil: () -> Unit,
     onIrAAdopciones: () -> Unit,
+    onIrAMapa: () -> Unit,
     onCerrarSesion: () -> Unit
 ) {
     Scaffold(
@@ -83,14 +84,14 @@ fun MainScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 TarjetaAccion(
-                    emoji    = "",
+                    emoji    = "🐾",
                     titulo   = "Adoptar",
                     subtitulo = "Encuentra tu compañero ideal",
                     modifier  = Modifier.weight(1f),
                     onClick   = onIrAAdopciones
                 )
                 TarjetaAccion(
-                    emoji    = "",
+                    emoji    = "👤",
                     titulo   = "Mi perfil",
                     subtitulo = "Ver mis solicitudes",
                     modifier  = Modifier.weight(1f),
@@ -105,18 +106,18 @@ fun MainScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 TarjetaAccion(
-                    emoji     = "",
+                    emoji     = "📢",
                     titulo    = "Perro perdido",
                     subtitulo = "Reportar o buscar",
                     modifier  = Modifier.weight(1f),
                     onClick   = { /* Próximamente */ }
                 )
                 TarjetaAccion(
-                    emoji     = "",
+                    emoji     = "📍",
                     titulo    = "Albergues",
                     subtitulo = "Ver en el mapa",
                     modifier  = Modifier.weight(1f),
-                    onClick   = { /* Próximamente */ }
+                    onClick   = onIrAMapa
                 )
             }
 

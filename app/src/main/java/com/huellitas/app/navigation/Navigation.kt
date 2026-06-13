@@ -9,6 +9,7 @@ import com.huellitas.app.ui.screens.auth.LoginScreen
 import com.huellitas.app.ui.screens.auth.RegistroScreen
 import com.huellitas.app.ui.screens.profile.PerfilScreen
 import com.huellitas.app.ui.screens.main.MainScreen
+import com.huellitas.app.ui.screens.maps.MapaAlberguesScreen
 
 // Rutas de navegación
 sealed class Pantalla {
@@ -18,6 +19,7 @@ sealed class Pantalla {
     object Perfil        : Pantalla()
     object Adopciones    : Pantalla()
     object DetalleAdopcion : Pantalla()
+    object MapaAlbergues : Pantalla()
 }
 
 @Composable
@@ -52,10 +54,17 @@ fun HuellitasNavHost() {
                 usuario = usuarioActual!!,
                 onIrAPerfil = { pantallaActual = Pantalla.Perfil },
                 onIrAAdopciones = { pantallaActual = Pantalla.Adopciones },
+                onIrAMapa = { pantallaActual = Pantalla.MapaAlbergues },
                 onCerrarSesion = {
                     usuarioActual = null
                     pantallaActual = Pantalla.Login
                 }
+            )
+        }
+
+        is Pantalla.MapaAlbergues -> {
+            MapaAlberguesScreen(
+                onVolver = { pantallaActual = Pantalla.Principal }
             )
         }
 
