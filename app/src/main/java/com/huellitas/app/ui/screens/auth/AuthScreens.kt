@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.huellitas.app.data.model.Usuario
 import com.huellitas.app.data.repository.HuellitasRepository
 import com.huellitas.app.ui.components.*
@@ -30,8 +31,8 @@ fun LoginScreen(
     onLoginExitoso: (Usuario) -> Unit,
     onIrARegistro: () -> Unit
 ) {
-    val context = LocalContext.current
-    val repo    = remember { HuellitasRepository(context) }
+    val repo    = remember { HuellitasRepository() }
+    val scope   = rememberCoroutineScope()
 
     var email       by remember { mutableStateOf("") }
     var password    by remember { mutableStateOf("") }
@@ -129,11 +130,13 @@ fun LoginScreen(
                                     email.isBlank()    -> errorMsg = "Ingresa tu correo"
                                     password.isBlank() -> errorMsg = "Ingresa tu contraseña"
                                     else -> {
-                                        cargando = true
-                                        val usuario = repo.loginUsuario(email.trim(), password)
-                                        cargando = false
-                                        if (usuario != null) onLoginExitoso(usuario)
-                                        else errorMsg = "Correo o contraseña incorrectos"
+                                        scope.launch {
+                                            cargando = true
+                                            val usuario = repo.loginUsuario(email.trim(), password)
+                                            cargando = false
+                                            if (usuario != null) onLoginExitoso(usuario)
+                                            else errorMsg = "Correo o contraseña incorrectos"
+                                        }
                                     }
                                 }
                             }
@@ -163,8 +166,8 @@ fun RegistroScreen(
     onRegistroExitoso: (Usuario) -> Unit,
     onVolver: () -> Unit
 ) {
-    val context = LocalContext.current
-    val repo    = remember { HuellitasRepository(context) }
+    val repo    = remember { HuellitasRepository() }
+    val scope   = rememberCoroutineScope()
 
     var nombre    by remember { mutableStateOf("") }
     var email     by remember { mutableStateOf("") }
@@ -188,6 +191,7 @@ fun RegistroScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp)
+                .imePadding()
         ) {
             Spacer(Modifier.height(16.dp))
 
@@ -296,21 +300,22 @@ fun RegistroScreen(
                         !email.contains("@")        -> errorMsg = "Correo no válido"
                         password.length < 4         -> errorMsg = "La contraseña debe tener al menos 4 caracteres"
                         password != confirmar       -> errorMsg = "Las contraseñas no coinciden"
-                        repo.emailExiste(email.trim()) -> errorMsg = "Este correo ya está registrado"
                         else -> {
-                            val nuevo = Usuario(
-                                nombre   = nombre.trim(),
-                                email    = email.trim(),
-                                password = password,
-                                rol      = rolSelec,
-                                telefono = telefono.trim()
-                            )
-                            val result = repo.registrarUsuario(nuevo)
-                            result.onSuccess { id ->
-                                val creado = repo.obtenerUsuarioPorId(id.toInt())
-                                if (creado != null) onRegistroExitoso(creado)
+                            scope.launch {
+                                val nuevo = Usuario(
+                                    nombre   = nombre.trim(),
+                                    email    = email.trim(),
+                                    password = password,
+                                    rol      = rolSelec,
+                                    telefono = telefono.trim()
+                                )
+                                val result = repo.registrarUsuario(nuevo)
+                                result.onSuccess { id ->
+                                    val creado = repo.obtenerUsuarioPorId(id)
+                                    if (creado != null) onRegistroExitoso(creado)
+                                }
+                                result.onFailure { errorMsg = it.message ?: "Error al registrar" }
                             }
-                            result.onFailure { errorMsg = it.message ?: "Error al registrar" }
                         }
                     }
                 }
@@ -320,7 +325,7 @@ fun RegistroScreen(
 
             BotonSecundario(texto = "Ya tengo cuenta", onClick = onVolver)
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(80.dp))
         }
     }
 }

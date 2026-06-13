@@ -23,6 +23,9 @@ import com.huellitas.app.data.repository.HuellitasRepository
 import com.huellitas.app.ui.components.*
 import com.huellitas.app.ui.theme.*
 import androidx.compose.ui.graphics.Color
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.launch
 
 // ══════════════════════════════════════════════════════════
 //  LISTADO DE ADOPCIONES
@@ -30,11 +33,11 @@ import androidx.compose.ui.graphics.Color
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdopcionListScreen(
-    usuarioId: Int,
+    usuarioId: String,
     onVerDetalle: (PerroAdopcion) -> Unit
 ) {
-    val context = LocalContext.current
-    val repo    = remember { HuellitasRepository(context) }
+    val repo    = remember { HuellitasRepository() }
+    val scope   = rememberCoroutineScope()
 
     var perros      by remember { mutableStateOf(emptyList<PerroAdopcion>()) }
     var filtroRaza  by remember { mutableStateOf("") }
@@ -117,7 +120,9 @@ fun AdopcionListScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = {
-                                    perros = repo.obtenerPerrosPorFiltro(filtroRaza, filtroZona)
+                                    scope.launch {
+                                        perros = repo.obtenerPerrosPorFiltro(filtroRaza, filtroZona)
+                                    }
                                 },
                                 modifier = Modifier.weight(1f),
                                 shape    = RoundedCornerShape(10.dp),
@@ -126,7 +131,9 @@ fun AdopcionListScreen(
                             OutlinedButton(
                                 onClick = {
                                     filtroRaza = ""; filtroZona = ""
-                                    perros = repo.obtenerPerrosDisponibles()
+                                    scope.launch {
+                                        perros = repo.obtenerPerrosDisponibles()
+                                    }
                                 },
                                 modifier = Modifier.weight(1f),
                                 shape    = RoundedCornerShape(10.dp)
@@ -179,9 +186,16 @@ fun TarjetaPerro(perro: PerroAdopcion, onClick: () -> Unit) {
                     .background(NaranjaClaro),
                 contentAlignment = Alignment.Center
             ) {
-                Text("", fontSize = 32.sp)
-                // Para foto real: AsyncImage(model = perro.fotoUri, ...)
-                // requiere librería Coil: implementation("io.coil-kt:coil-compose:2.4.0")
+                if (perro.fotoUri.isNotBlank()) {
+                    AsyncImage(
+                        model = perro.fotoUri,
+                        contentDescription = perro.nombre,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text("🐶", fontSize = 32.sp)
+                }
             }
 
             Spacer(Modifier.width(14.dp))
@@ -254,11 +268,11 @@ fun EtiquetaInfo(texto: String) {
 @Composable
 fun DetalleAdopcionScreen(
     perro: PerroAdopcion,
-    usuarioId: Int,
+    usuarioId: String,
     onVolver: () -> Unit
 ) {
-    val context   = LocalContext.current
-    val repo      = remember { HuellitasRepository(context) }
+    val repo      = remember { HuellitasRepository() }
+    val scope     = rememberCoroutineScope()
     var mensaje   by remember { mutableStateOf("") }
     var resultado by remember { mutableStateOf("") }
     var isError   by remember { mutableStateOf(false) }
@@ -296,7 +310,16 @@ fun DetalleAdopcionScreen(
                         .background(NaranjaClaro),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("", fontSize = 72.sp)
+                    if (perro.fotoUri.isNotBlank()) {
+                        AsyncImage(
+                            model = perro.fotoUri,
+                            contentDescription = perro.nombre,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text("🐶", fontSize = 72.sp)
+                    }
                 }
             }
 
@@ -374,22 +397,24 @@ fun DetalleAdopcionScreen(
                                     resultado = "Escribe un mensaje para el albergue"
                                     isError   = true
                                 } else {
-                                    enviando = true
-                                    val sol = SolicitudAdopcion(
-                                        perroId   = perro.id,
-                                        usuarioId = usuarioId,
-                                        mensaje   = mensaje
-                                    )
-                                    val res = repo.crearSolicitud(sol)
-                                    enviando = false
-                                    res.onSuccess {
-                                        resultado = "¡Solicitud enviada! El albergue se contactará contigo."
-                                        isError   = false
-                                        enviado   = true
-                                    }
-                                    res.onFailure {
-                                        resultado = it.message ?: "Error al enviar solicitud"
-                                        isError   = true
+                                    scope.launch {
+                                        enviando = true
+                                        val sol = SolicitudAdopcion(
+                                            perroId   = perro.id,
+                                            usuarioId = usuarioId,
+                                            mensaje   = mensaje
+                                        )
+                                        val res = repo.crearSolicitud(sol)
+                                        enviando = false
+                                        res.onSuccess {
+                                            resultado = "¡Solicitud enviada! El albergue se contactará contigo."
+                                            isError   = false
+                                            enviado   = true
+                                        }
+                                        res.onFailure {
+                                            resultado = it.message ?: "Error al enviar solicitud"
+                                            isError   = true
+                                        }
                                     }
                                 }
                             },

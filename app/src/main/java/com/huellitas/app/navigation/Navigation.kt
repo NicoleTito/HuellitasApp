@@ -61,7 +61,7 @@ fun HuellitasNavHost() {
 
         is Pantalla.Adopciones -> {
             AdopcionListScreen(
-                usuarioId   = usuarioActual?.id ?: 0,
+                usuarioId   = usuarioActual?.id ?: "",
                 onVerDetalle = { perro ->
                     perroSeleccionado = perro
                     pantallaActual = Pantalla.DetalleAdopcion
@@ -73,7 +73,7 @@ fun HuellitasNavHost() {
             perroSeleccionado?.let { perro ->
                 DetalleAdopcionScreen(
                     perro     = perro,
-                    usuarioId = usuarioActual?.id ?: 0,
+                    usuarioId = usuarioActual?.id ?: "",
                     onVolver  = { pantallaActual = Pantalla.Adopciones }
                 )
             }

@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.huellitas.app.data.model.SolicitudAdopcion
 import com.huellitas.app.data.model.Usuario
 import com.huellitas.app.data.repository.HuellitasRepository
@@ -30,8 +31,8 @@ fun PerfilScreen(
     onActualizarUsuario: (Usuario) -> Unit,
     onCerrarSesion: () -> Unit
 ) {
-    val context = LocalContext.current
-    val repo    = remember { HuellitasRepository(context) }
+    val repo    = remember { HuellitasRepository() }
+    val scope   = rememberCoroutineScope()
 
     var modoEdicion  by remember { mutableStateOf(false) }
     var nombre       by remember { mutableStateOf(usuario.nombre) }
@@ -160,12 +161,14 @@ fun PerfilScreen(
                         ) { Text("Cancelar") }
                         Button(
                             onClick = {
-                                val actualizado = usuario.copy(nombre = nombre.trim(), telefono = telefono.trim())
-                                val ok = repo.actualizarPerfil(actualizado)
-                                if (ok) {
-                                    onActualizarUsuario(actualizado)
-                                    modoEdicion = false
-                                    guardado    = true
+                                scope.launch {
+                                    val actualizado = usuario.copy(nombre = nombre.trim(), telefono = telefono.trim())
+                                    val ok = repo.actualizarPerfil(actualizado)
+                                    if (ok) {
+                                        onActualizarUsuario(actualizado)
+                                        modoEdicion = false
+                                        guardado    = true
+                                    }
                                 }
                             },
                             modifier = Modifier.weight(1f),
