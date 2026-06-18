@@ -194,6 +194,26 @@ fun MainScreen(
                         onClick = onIrAApoyo
                     )
                 }
+                Spacer(Modifier.height(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    TarjetaMenu(
+                        titulo = "Mascotas\nPerdidas",
+                        subtitulo = "Reporta o ayuda a encontrar mascotas.",
+                        icono = Icons.Default.Announcement,
+                        colorFondo = Color(0xFFFDE7E1),
+                        colorIcono = Color(0xFFE67E5D),
+                        modifier = Modifier.weight(1f),
+                        onClick = onIrAPerrosPerdidos
+                    )
+                    TarjetaMenu(
+                        titulo = "Mapa de\nAlbergues",
+                        subtitulo = "Encuentra refugios cerca de ti.",
+                        icono = Icons.Default.Map,
+                        colorIcono = Color(0xFF8D4934),
+                        modifier = Modifier.weight(1f),
+                        onClick = onIrAMapa
+                    )
+                }
             }
 
             Spacer(Modifier.height(32.dp))

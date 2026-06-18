@@ -5,10 +5,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
+import com.huellitas.app.data.model.ArticuloDonacion
 import com.huellitas.app.data.model.PerroAdopcion
 import com.huellitas.app.data.model.PerroPerdido
 import com.huellitas.app.data.model.SolicitudAdopcion
 import com.huellitas.app.data.model.Usuario
+import android.util.Log
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -86,11 +88,12 @@ class HuellitasRepository {
         return try {
             val snapshot = db.collection("pets")
                 .whereNotEqualTo("estado", "adoptado")
-                .orderBy("estado")
-                .orderBy("fechaPublicacion", Query.Direction.DESCENDING)
                 .get().await()
+            
             snapshot.toObjects(PerroAdopcion::class.java)
+                .sortedWith(compareBy<PerroAdopcion> { it.estado }.thenByDescending { it.fechaPublicacion })
         } catch (e: Exception) {
+            Log.e("HuellitasRepo", "Error en obtenerPerrosDisponibles", e)
             emptyList()
         }
     }
@@ -165,6 +168,7 @@ class HuellitasRepository {
             ref.putFile(uri).await()
             ref.downloadUrl.await().toString()
         } catch (e: Exception) {
+            Log.e("HuellitasRepo", "Error al subir imagen a $path: ${e.message}", e)
             null
         }
     }
@@ -210,7 +214,7 @@ class HuellitasRepository {
         }
     }
 
-    suspend fun obtenerDonaciones(categoria: String = ""): List<com.huellitas.app.data.model.ArticuloDonacion> {
+    suspend fun obtenerDonaciones(categoria: String = ""): List<ArticuloDonacion> {
         return try {
             var query: Query = db.collection("donations")
                 .whereEqualTo("estado", "disponible")
@@ -219,10 +223,50 @@ class HuellitasRepository {
                 query = query.whereEqualTo("categoria", categoria)
             }
 
-            val snapshot = query.orderBy("fechaPublicacion", Query.Direction.DESCENDING).get().await()
-            snapshot.toObjects(com.huellitas.app.data.model.ArticuloDonacion::class.java)
+            val snapshot = query.get().await()
+            snapshot.toObjects(ArticuloDonacion::class.java)
+                .sortedByDescending { it.fechaPublicacion }
         } catch (e: Exception) {
+            Log.e("HuellitasRepo", "Error en obtenerDonaciones", e)
             emptyList()
+        }
+    }
+
+    // ─────────────────────────────────────────
+    //  MÉTRICAS DE IMPACTO
+    // ─────────────────────────────────────────
+
+    suspend fun obtenerConteoDonacionesUsuario(usuarioId: String): Int {
+        return try {
+            val snapshot = db.collection("donations")
+                .whereEqualTo("donanteId", usuarioId)
+                .get().await()
+            snapshot.size()
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    suspend fun obtenerConteoPerrosPerdidosUsuario(usuarioId: String): Int {
+        return try {
+            val snapshot = db.collection("lost_pets")
+                .whereEqualTo("reporteroId", usuarioId)
+                .get().await()
+            snapshot.size()
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    suspend fun obtenerConteoAdopcionesUsuario(usuarioId: String): Int {
+        return try {
+            val snapshot = db.collection("requests")
+                .whereEqualTo("usuarioId", usuarioId)
+                .whereEqualTo("estado", "aprobada")
+                .get().await()
+            snapshot.size()
+        } catch (e: Exception) {
+            0
         }
     }
 }

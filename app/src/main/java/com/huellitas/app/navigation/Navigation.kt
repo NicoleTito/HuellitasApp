@@ -6,6 +6,7 @@ import com.huellitas.app.data.model.PerroAdopcion
 import com.huellitas.app.data.model.Usuario
 import com.huellitas.app.ui.screens.adoption.AdopcionListScreen
 import com.huellitas.app.ui.screens.adoption.DetalleAdopcionScreen
+import com.huellitas.app.ui.screens.adoption.PublicarPerroScreen
 import com.huellitas.app.ui.screens.auth.LoginScreen
 import com.huellitas.app.ui.screens.auth.RegistroScreen
 import com.huellitas.app.ui.screens.profile.PerfilScreen
@@ -32,6 +33,7 @@ sealed class Pantalla {
     object FormularioDonacion : Pantalla()
     object ApoyoEconomico : Pantalla()
     object Impacto        : Pantalla()
+    object PublicarPerro  : Pantalla()
 }
 
 @Composable
@@ -115,6 +117,7 @@ fun HuellitasNavHost() {
 
         is Pantalla.PerrosPerdidos -> {
             PerrosPerdidosScreen(
+                usuario = usuarioActual!!,
                 onVolver = { pantallaActual = Pantalla.Principal }
             )
         }
@@ -122,7 +125,8 @@ fun HuellitasNavHost() {
         is Pantalla.Match -> {
             MatchScreen(
                 usuario = usuarioActual!!,
-                onVolver = { pantallaActual = Pantalla.Principal }
+                onVolver = { pantallaActual = Pantalla.Principal },
+                onIrACatalogo = { pantallaActual = Pantalla.Adopciones }
             )
         }
 
@@ -136,7 +140,17 @@ fun HuellitasNavHost() {
                 },
                 onNavigateToMatch = { pantallaActual = Pantalla.Match },
                 onNavigateToCircular = { pantallaActual = Pantalla.DonarArticulos },
-                onNavigateToImpacto = { pantallaActual = Pantalla.Impacto }
+                onNavigateToImpacto = { pantallaActual = Pantalla.Impacto },
+                onNavigateToPublicar = { pantallaActual = Pantalla.PublicarPerro },
+                onNavigateToPerdidos = { pantallaActual = Pantalla.PerrosPerdidos }
+            )
+        }
+
+        is Pantalla.PublicarPerro -> {
+            BackHandler { pantallaActual = Pantalla.Adopciones }
+            PublicarPerroScreen(
+                usuario = usuarioActual!!,
+                onVolver = { pantallaActual = Pantalla.Adopciones }
             )
         }
 
@@ -156,7 +170,7 @@ fun HuellitasNavHost() {
                 BackHandler { pantallaActual = Pantalla.Adopciones }
                 DetalleAdopcionScreen(
                     perro     = perro,
-                    usuarioId = usuarioActual?.id ?: "",
+                    usuario   = usuarioActual!!,
                     onVolver  = { pantallaActual = Pantalla.Adopciones }
                 )
             }

@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerrosPerdidosScreen(
+    usuario: com.huellitas.app.data.model.Usuario,
     onVolver: () -> Unit
 ) {
     val repo = remember { HuellitasRepository() }
@@ -55,12 +56,15 @@ fun PerrosPerdidosScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { mostrarDialogo = true },
-                containerColor = NaranjaHuellitas,
-                contentColor = BlancoPuro
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Reportar")
+            // Solo dueños y voluntarios pueden reportar mascotas perdidas
+            if (usuario.rol != "albergue") {
+                FloatingActionButton(
+                    onClick = { mostrarDialogo = true },
+                    containerColor = NaranjaHuellitas,
+                    contentColor = BlancoPuro
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Reportar")
+                }
             }
         },
         containerColor = CremaBg
@@ -103,6 +107,7 @@ fun PerrosPerdidosScreen(
 
         if (mostrarDialogo) {
             DialogoReportarPerdido(
+                usuarioId = usuario.id,
                 onDismiss = { mostrarDialogo = false },
                 onReportado = {
                     mostrarDialogo = false
@@ -138,7 +143,12 @@ fun TarjetaPerroPerdido(perro: PerroPerdido) {
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Text("🐶", modifier = Modifier.align(Alignment.Center), fontSize = 32.sp)
+                    val emoji = when(perro.especie.lowercase()) {
+                        "gato" -> "🐱"
+                        "perro" -> "🐶"
+                        else -> "🐾"
+                    }
+                    Text(emoji, modifier = Modifier.align(Alignment.Center), fontSize = 32.sp)
                 }
             }
             
@@ -146,7 +156,8 @@ fun TarjetaPerroPerdido(perro: PerroPerdido) {
             
             Column {
                 Text(perro.nombre, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = RojoError)
-                Text("${perro.raza} • ${perro.color}", fontSize = 14.sp, color = GrisSecundario)
+                Text("${perro.especie} • ${perro.raza} (${perro.tamano})", fontSize = 13.sp, color = GrisSecundario)
+                Text("Color: ${perro.color}", fontSize = 12.sp, color = GrisSecundario)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.LocationOn, null, tint = NaranjaHuellitas, modifier = Modifier.size(16.dp))
@@ -163,9 +174,12 @@ fun TarjetaPerroPerdido(perro: PerroPerdido) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DialogoReportarPerdido(onDismiss: () -> Unit, onReportado: () -> Unit) {
+fun DialogoReportarPerdido(usuarioId: String, onDismiss: () -> Unit, onReportado: () -> Unit) {
     var nombre by remember { mutableStateOf("") }
+    var especie by remember { mutableStateOf("Perro") }
     var raza by remember { mutableStateOf("") }
+    var tamano by remember { mutableStateOf("Mediano") }
+    var color by remember { mutableStateOf("") }
     var zona by remember { mutableStateOf("") }
     var contacto by remember { mutableStateOf("") }
     val repo = remember { HuellitasRepository() }
@@ -173,29 +187,75 @@ fun DialogoReportarPerdido(onDismiss: () -> Unit, onReportado: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Reportar Perro Perdido") },
+        title = { Text("Reportar Mascota Perdida") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") })
-                OutlinedTextField(value = raza, onValueChange = { raza = it }, label = { Text("Raza") })
-                OutlinedTextField(value = zona, onValueChange = { zona = it }, label = { Text("Zona/Lugar") })
-                OutlinedTextField(value = contacto, onValueChange = { contacto = it }, label = { Text("Teléfono de contacto") })
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    OutlinedTextField(value = nombre, onValueChange = { nombre = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    Text("Especie", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Perro", "Gato", "Otro").forEach { esp ->
+                            FilterChip(
+                                selected = especie == esp,
+                                onClick = { especie = esp },
+                                label = { Text(esp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+                item {
+                    OutlinedTextField(value = raza, onValueChange = { raza = it }, label = { Text("Raza") }, modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    Text("Tamaño", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Pequeño", "Mediano", "Grande").forEach { tam ->
+                            FilterChip(
+                                selected = tamano == tam,
+                                onClick = { tamano = tam },
+                                label = { Text(tam) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+                item {
+                    OutlinedTextField(value = color, onValueChange = { color = it }, label = { Text("Color") }, modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(value = zona, onValueChange = { zona = it }, label = { Text("¿Dónde se perdió?") }, modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(value = contacto, onValueChange = { contacto = it }, label = { Text("Teléfono de contacto") }, modifier = Modifier.fillMaxWidth())
+                }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                scope.launch {
-                    val nuevo = PerroPerdido(
-                        nombre = nombre,
-                        raza = raza,
-                        zona = zona,
-                        contacto = contacto
-                    )
-                    repo.reportarPerroPerdido(nuevo)
-                    onReportado()
-                }
-            }) {
-                Text("Reportar")
+            Button(
+                onClick = {
+                    if (nombre.isNotBlank() && contacto.isNotBlank()) {
+                        scope.launch {
+                            val nuevo = PerroPerdido(
+                                nombre = nombre,
+                                especie = especie,
+                                raza = raza,
+                                tamano = tamano,
+                                color = color,
+                                zona = zona,
+                                contacto = contacto,
+                                reporteroId = usuarioId
+                            )
+                            repo.reportarPerroPerdido(nuevo)
+                            onReportado()
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = RojoError)
+            ) {
+                Text("Publicar Reporte", color = BlancoPuro)
             }
         },
         dismissButton = {

@@ -25,6 +25,7 @@ import com.huellitas.app.ui.theme.CremaBg
 import com.huellitas.app.ui.theme.GrisTexto
 import com.huellitas.app.ui.theme.NaranjaHuellitas
 
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,7 +39,8 @@ data class Pregunta(
 @Composable
 fun MatchScreen(
     usuario: com.huellitas.app.data.model.Usuario,
-    onVolver: () -> Unit
+    onVolver: () -> Unit,
+    onIrACatalogo: () -> Unit = {}
 ) {
     var mostrarTest by remember { mutableStateOf(false) }
     var preguntaActualIndex by remember { mutableStateOf(0) }
@@ -131,12 +133,12 @@ fun MatchScreen(
                     }
                 )
             } else {
-                PantallaResultado(padding) {
-                    mostrarTest = false
-                    preguntaActualIndex = 0
-                    respuestas.clear()
-                    onVolver()
-                }
+                PantallaResultado(
+                    padding = padding,
+                    respuestas = respuestas,
+                    onFinalizar = onVolver,
+                    onIrACatalogo = onIrACatalogo
+                )
             }
         }
     }
@@ -258,36 +260,116 @@ fun PantallaPregunta(
 }
 
 @Composable
-fun PantallaResultado(padding: PaddingValues, onFinalizar: () -> Unit) {
+fun PantallaResultado(
+    padding: PaddingValues,
+    respuestas: List<Int>,
+    onFinalizar: () -> Unit,
+    onIrACatalogo: () -> Unit
+) {
+    val repo = remember { com.huellitas.app.data.repository.HuellitasRepository() }
+    var perrosMatch by remember { mutableStateOf<List<com.huellitas.app.data.model.PerroAdopcion>>(emptyList()) }
+    var otrosPerros by remember { mutableStateOf<List<com.huellitas.app.data.model.PerroAdopcion>>(emptyList()) }
+    var cargando by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val todos = repo.obtenerPerrosDisponibles()
+        
+        // Lógica de Match Inteligente mejorada
+        val scoredDogs = todos.map { perro ->
+            var puntos = 0
+            
+            // Filtro de Energía (Pregunta 3)
+            val buscaTranquilo = respuestas.getOrNull(3) == 0
+            val buscaActivo = respuestas.getOrNull(3) == 1 || respuestas.getOrNull(3) == 2
+            
+            if (buscaTranquilo && (perro.descripcion.contains("tranquilo", true) || perro.descripcion.contains("calma", true))) puntos += 3
+            if (buscaActivo && (perro.descripcion.contains("activo", true) || perro.descripcion.contains("juguetón", true) || perro.descripcion.contains("energía", true))) puntos += 3
+            
+            // Filtro de Tamaño/Espacio (Pregunta 1)
+            val viveEnDepto = respuestas.getOrNull(1) == 0
+            if (viveEnDepto && perro.tamano == "Pequeño") puntos += 2
+            if (!viveEnDepto && (perro.tamano == "Grande" || perro.tamano == "Mediano")) puntos += 2
+            
+            // Filtro de Niños (Pregunta 2)
+            val tieneNinos = respuestas.getOrNull(2) == 0
+            if (tieneNinos && (perro.descripcion.contains("niños", true) || perro.descripcion.contains("noble", true))) puntos += 2
+
+            perro to puntos
+        }
+
+        perrosMatch = scoredDogs.filter { it.second >= 2 }.sortedByDescending { it.second }.map { it.first }
+        
+        if (perrosMatch.isEmpty()) {
+            otrosPerros = todos.take(3)
+        }
+
+        cargando = false
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("✨", fontSize = 64.sp)
-        Text(
-            "¡Análisis completo!",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF8D4934)
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Hemos analizado tus respuestas. Ahora verás perritos que encajan perfectamente con tu ritmo de vida.",
-            textAlign = TextAlign.Center,
-            color = Color.Gray
-        )
-        Spacer(Modifier.height(48.dp))
-        Button(
-            onClick = onFinalizar,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8D4934))
-        ) {
-            Text("Ver mis resultados")
+        if (cargando) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFF8D4934))
+            }
+        } else if (perrosMatch.isEmpty()) {
+            Text("✨", fontSize = 64.sp)
+            Text("¡Análisis completo!", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8D4934))
+            Spacer(Modifier.height(16.dp))
+            Text("No encontramos un match exacto ahora, pero estos amiguitos podrían gustarte:", textAlign = TextAlign.Center, color = Color.Gray)
+            
+            Spacer(Modifier.height(24.dp))
+            
+            androidx.compose.foundation.lazy.LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(otrosPerros) { perro ->
+                    com.huellitas.app.ui.screens.main.TarjetaPerroDestacado(perro) { onIrACatalogo() }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            
+            Button(
+                onClick = onIrACatalogo, 
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8D4934))
+            ) {
+                Text("Explorar todo el catálogo")
+            }
+        } else {
+            Text("🐾", fontSize = 48.sp)
+            Text("¡Tus Matches Ideales!", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8D4934))
+            Text("Basado en tu estilo de vida", fontSize = 14.sp, color = Color.Gray)
+            
+            Spacer(Modifier.height(24.dp))
+
+            androidx.compose.foundation.lazy.LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(perrosMatch.take(5)) { perro ->
+                    com.huellitas.app.ui.screens.main.TarjetaPerroDestacado(perro) { onIrACatalogo() }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Button(
+                onClick = onIrACatalogo,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8D4934))
+            ) {
+                Text("Ver más en el catálogo")
+            }
         }
     }
 }

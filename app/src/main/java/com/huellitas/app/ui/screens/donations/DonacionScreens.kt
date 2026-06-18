@@ -1,5 +1,10 @@
 package com.huellitas.app.ui.screens.donations
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,9 +25,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,10 +52,22 @@ fun DonarArticulosScreen(
     onNavigateToImpacto: () -> Unit = {}
 ) {
     val repo = remember { com.huellitas.app.data.repository.HuellitasRepository() }
+    val scope = rememberCoroutineScope()
     var filtroSeleccionado by remember { mutableStateOf("Todos") }
     var donaciones by remember { mutableStateOf<List<ArticuloDonacion>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }
     var searchText by remember { mutableStateOf("") }
+    
+    // Estado para el detalle
+    var articuloSeleccionado by remember { mutableStateOf<ArticuloDonacion?>(null) }
+
+    if (articuloSeleccionado != null) {
+        DetalleDonacionScreen(
+            articulo = articuloSeleccionado!!,
+            onVolver = { articuloSeleccionado = null }
+        )
+        return
+    }
 
     LaunchedEffect(filtroSeleccionado) {
         cargando = true
@@ -245,24 +265,46 @@ fun DonarArticulosScreen(
             Spacer(Modifier.height(16.dp))
 
             // Grid de Artículos
-            if (cargando) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFFE67E5D))
-                }
-            } else if (donaciones.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No hay artículos disponibles.", color = Color.Gray)
-                }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(donaciones) { articulo ->
-                        TarjetaArticuloGrid(articulo)
+            val donacionesFiltradas = donaciones.filter {
+                it.nombre.contains(searchText, ignoreCase = true) ||
+                it.descripcion.contains(searchText, ignoreCase = true)
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (cargando) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        userScrollEnabled = false
+                    ) {
+                        items(6) { SkeletonArticulo() }
+                    }
+                } else if (donacionesFiltradas.isEmpty()) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            if (searchText.isEmpty()) "No hay artículos disponibles." else "No se encontraron resultados.",
+                            color = Color.Gray
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(donacionesFiltradas) { articulo ->
+                            TarjetaArticuloGrid(articulo, onClick = { articuloSeleccionado = articulo })
+                        }
                     }
                 }
             }
@@ -271,9 +313,11 @@ fun DonarArticulosScreen(
 }
 
 @Composable
-fun TarjetaArticuloGrid(articulo: ArticuloDonacion) {
+fun TarjetaArticuloGrid(articulo: ArticuloDonacion, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -281,7 +325,7 @@ fun TarjetaArticuloGrid(articulo: ArticuloDonacion) {
         Column {
             Box(modifier = Modifier.height(140.dp).fillMaxWidth()) {
                 AsyncImage(
-                    model = articulo.fotoUri,
+                    model = if (articulo.fotoUri.isEmpty()) "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?q=80&w=500" else articulo.fotoUri,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -362,6 +406,13 @@ fun FormularioDonacionScreen(usuario: com.huellitas.app.data.model.Usuario, onVo
     var descripcion by remember { mutableStateOf("") }
     var publicando by remember { mutableStateOf(false) }
 
+    var imagenUri by remember { mutableStateOf<Uri?>(null) }
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imagenUri = uri
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -437,7 +488,7 @@ fun FormularioDonacionScreen(usuario: com.huellitas.app.data.model.Usuario, onVo
                                 .size(85.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color.White)
-                                .clickable { }
+                                .clickable { launcher.launch("image/*") }
                                 .padding(2.dp)
                         ) {
                             // Simulando borde punteado con fondo
@@ -447,9 +498,18 @@ fun FormularioDonacionScreen(usuario: com.huellitas.app.data.model.Usuario, onVo
                                     .background(Color(0xFFFDE7E1).copy(alpha = 0.3f), RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.AddAPhoto, null, tint = Color(0xFF8D4934), modifier = Modifier.size(24.dp))
-                                    Text("Añadir", fontSize = 11.sp, color = Color(0xFF8D4934), fontWeight = FontWeight.Bold)
+                                if (imagenUri != null) {
+                                    AsyncImage(
+                                        model = imagenUri,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Default.AddAPhoto, null, tint = Color(0xFF8D4934), modifier = Modifier.size(24.dp))
+                                        Text("Añadir", fontSize = 11.sp, color = Color(0xFF8D4934), fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }
@@ -496,7 +556,7 @@ fun FormularioDonacionScreen(usuario: com.huellitas.app.data.model.Usuario, onVo
                     Spacer(Modifier.height(12.dp))
                     Text("Categoría", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("Camas", "Correas", "Comida", "Juguetes").forEach { cat ->
+                        listOf("Camas", "Correas", "Alimento", "Juguetes").forEach { cat ->
                             val selected = categoriaSeleccionada == cat
                             FilterChip(
                                 selected = selected,
@@ -634,13 +694,27 @@ fun FormularioDonacionScreen(usuario: com.huellitas.app.data.model.Usuario, onVo
                         if (nombre.isNotBlank() && descripcion.isNotBlank()) {
                             scope.launch {
                                 publicando = true
+                                
+                                // Intentamos subir, pero si falla o no hay Storage, usamos Plan B
+                                val subidaExcitosa = if (imagenUri != null) {
+                                    repo.subirImagen(imagenUri!!, "donations")
+                                } else null
+
+                                // Si la subida falló, asignamos una imagen premium según la categoría
+                                val fotoFinal = subidaExcitosa ?: when(categoriaSeleccionada) {
+                                    "Alimento" -> "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?q=80&w=500"
+                                    "Juguetes" -> "https://images.unsplash.com/photo-1576201836106-db1758fd1c97?q=80&w=500"
+                                    "Camas" -> "https://images.unsplash.com/photo-1541599540903-216a46ca1df0?q=80&w=500"
+                                    else -> "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?q=80&w=500"
+                                }
+
                                 val nuevaDonacion = ArticuloDonacion(
                                     nombre = nombre,
                                     descripcion = descripcion,
                                     categoria = categoriaSeleccionada,
                                     donanteNombre = usuario.nombre,
                                     donanteId = usuario.id,
-                                    fotoUri = "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?q=80&w=500" // Mock por ahora
+                                    fotoUri = fotoFinal
                                 )
                                 repo.agregarDonacion(nuevaDonacion)
                                 publicando = false
@@ -705,6 +779,212 @@ fun ApoyoEconomicoScreen(onVolver: () -> Unit) {
                 color = GrisSecundario,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DetalleDonacionScreen(articulo: ArticuloDonacion, onVolver: () -> Unit) {
+    val repo = remember { com.huellitas.app.data.repository.HuellitasRepository() }
+    var donante by remember { mutableStateOf<com.huellitas.app.data.model.Usuario?>(null) }
+    val context = LocalContext.current
+
+    LaunchedEffect(articulo.donanteId) {
+        donante = repo.obtenerUsuarioPorId(articulo.donanteId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Detalle del Artículo", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onVolver) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
+        },
+        bottomBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 16.dp,
+                color = Color.White
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .navigationBarsPadding(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Donado por:", fontSize = 12.sp, color = Color.Gray)
+                        Text(articulo.donanteNombre, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                    Button(
+                        onClick = {
+                            donante?.telefono?.let { tel ->
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        data = Uri.parse("https://api.whatsapp.com/send?phone=$tel&text=Hola, estoy interesado en tu donación de ${articulo.nombre} en HuellitasApp")
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    // Manejar error si no hay app de mensajería
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF626F47)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(48.dp),
+                        enabled = donante != null && donante?.telefono?.isNotEmpty() == true
+                    ) {
+                        Icon(Icons.Default.Chat, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Contactar")
+                    }
+                }
+            }
+        }
+    ) {
+padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Imagen con fallback de seguridad
+            val imagenDetalle = if (articulo.fotoUri.isBlank()) {
+                "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?q=80&w=500"
+            } else {
+                articulo.fotoUri
+            }
+
+            AsyncImage(
+                model = imagenDetalle,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                contentScale = ContentScale.Crop
+            )
+
+            Column(Modifier.padding(20.dp)) {
+                // Categoría Badge
+                Surface(
+                    color = Color(0xFFFDE7E1),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        articulo.categoria.uppercase(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF8D4934)
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+                
+                Text(
+                    articulo.nombre,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Icon(Icons.Default.Schedule, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Publicado el ${articulo.fechaPublicacion}", fontSize = 12.sp, color = Color.Gray)
+                }
+
+                HorizontalDivider(Modifier.padding(vertical = 16.dp), color = Color(0xFFF0F0F0))
+
+                Text("Descripción", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    articulo.descripcion,
+                    fontSize = 15.sp,
+                    color = Color(0xFF444444),
+                    lineHeight = 22.sp
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                // Info de Entrega
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.LocationOn, null, tint = Color(0xFFE67E5D))
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("Punto de entrega", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Colonia Roma Sur, CDMX", fontSize = 13.sp, color = Color.Gray)
+                        }
+                    }
+                }
+                
+                Spacer(Modifier.height(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun rememberShimmerBrush(): Brush {
+    val shimmerColors = listOf(
+        Color.LightGray.copy(alpha = 0.6f),
+        Color.LightGray.copy(alpha = 0.2f),
+        Color.LightGray.copy(alpha = 0.6f),
+    )
+
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+
+    return Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset.Zero,
+        end = Offset(x = translateAnim.value, y = translateAnim.value)
+    )
+}
+
+@Composable
+fun SkeletonArticulo() {
+    val brush = rememberShimmerBrush()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column {
+            Box(modifier = Modifier.height(140.dp).fillMaxWidth().background(brush))
+            Column(Modifier.padding(12.dp)) {
+                Box(modifier = Modifier.fillMaxWidth(0.7f).height(16.dp).background(brush))
+                Spacer(Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth(0.9f).height(12.dp).background(brush))
+                Spacer(Modifier.height(12.dp))
+                Box(modifier = Modifier.width(60.dp).height(12.dp).background(brush))
+            }
         }
     }
 }

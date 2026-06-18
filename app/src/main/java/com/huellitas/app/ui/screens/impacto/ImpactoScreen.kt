@@ -15,8 +15,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -39,6 +40,28 @@ fun ImpactoScreen(
     onNavigateToMatch: () -> Unit = {},
     onNavigateToCircular: () -> Unit = {}
 ) {
+    val repo = remember { com.huellitas.app.data.repository.HuellitasRepository() }
+    val scope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+    
+    var donacionesRealizadas by remember { mutableIntStateOf(0) }
+    var solicitudesAprobadas by remember { mutableIntStateOf(0) }
+    var perrosPerdidosReportados by remember { mutableIntStateOf(0) }
+
+    val cargarDatos = {
+        scope.launch {
+            isRefreshing = true
+            donacionesRealizadas = repo.obtenerConteoDonacionesUsuario(usuario.id)
+            solicitudesAprobadas = repo.obtenerConteoAdopcionesUsuario(usuario.id)
+            perrosPerdidosReportados = repo.obtenerConteoPerrosPerdidosUsuario(usuario.id)
+            isRefreshing = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        cargarDatos()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -134,172 +157,202 @@ fun ImpactoScreen(
         },
         containerColor = Color(0xFFFBFBFF)
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
         ) {
-            Spacer(Modifier.height(20.dp))
-
-            // Perfil Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(2.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(contentAlignment = Alignment.BottomEnd) {
-                        Box(
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFFDE7E1)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                usuario.nombre.firstOrNull()?.uppercaseChar()?.toString() ?: "U",
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF8D4934)
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .offset(x = 4.dp, y = 4.dp)
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF8D4934))
-                                .padding(2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("Lvl 5", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    
-                    Spacer(Modifier.width(16.dp))
-                    
-                    Column {
-                        Text(usuario.nombre, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D1B20))
-                        Text("GUARDIÁN DE LA TIERRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8D4934).copy(alpha = 0.7f))
-                        Spacer(Modifier.height(8.dp))
-                        LinearProgressIndicator(
-                            progress = { 0.8f },
-                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-                            color = Color(0xFF626F47),
-                            trackColor = Color(0xFFEEEEEE)
-                        )
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Puntos Huella: 2,450", fontSize = 10.sp, color = Color.Gray)
-                            Text("Próximo Nivel: 3,000", fontSize = 10.sp, color = Color.Gray)
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-            Text("Tus Medallas", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MedallaItem("Donante Oro", Icons.Default.VolunteerActivism, Color(0xFFF1F8E9), Color(0xFF558B2F), Modifier.weight(1f))
-                MedallaItem("Eco Amigo", Icons.Default.Eco, Color(0xFFFCE4EC), Color(0xFF880E4F), Modifier.weight(1f))
-                MedallaItem("Voluntario", Icons.Default.Handshake, Color(0xFFF5F5F5), Color(0xFF616161), Modifier.weight(1f))
-                MedallaItem("Rescatista", Icons.Default.Pets, Color(0xFFF5F5F5), Color(0xFF616161), Modifier.weight(1f))
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Calculadora Impacto
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF8D4934))
-            ) {
-                Column(Modifier.padding(20.dp)) {
-                    Text("Calculadora de Impacto", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(16.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ImpactoBox("120", "Perros alimentados este mes", Icons.Default.Restaurant, Modifier.weight(1f))
-                        ImpactoBox("45kg", "Artículos reciclados", Icons.Default.Autorenew, Modifier.weight(1f))
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = { },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Ver desglose detallado", color = Color(0xFF8D4934), fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-            Text("Historial de Actividad", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-
-            Row(Modifier.fillMaxWidth().height(200.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Tarjeta grande izquierda
+                Spacer(Modifier.height(20.dp))
+    
+                // Perfil Card
                 Card(
-                    modifier = Modifier.weight(1.2f).fillMaxHeight(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFDCEDC8))
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(2.dp)
                 ) {
-                    Column(Modifier.padding(16.dp).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Icon(Icons.Default.History, null, tint = Color(0xFF33691E))
-                            Spacer(Modifier.height(12.dp))
-                            Text("Donación Mensual", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1B5E20))
-                            Text("Protectora El Amigo", fontSize = 12.sp, color = Color(0xFF33691E).copy(alpha = 0.7f))
-                        }
-                        Column {
-                            Text("$50", fontSize = 32.sp, fontWeight = FontWeight.Black, color = Color(0xFF1B5E20))
-                            Text("15 de Octubre, 2023", fontSize = 10.sp, color = Color(0xFF33691E).copy(alpha = 0.7f))
-                        }
-                    }
-                }
-
-                // Columna de tarjetas pequeñas
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ActividadPequena("Voluntariado", "Caminata Canina", Icons.Default.CalendarToday, Color(0xFFEEEEEE), Modifier.weight(1f))
-                    ActividadPequena("Compra Eco", "Cama orgánica", Icons.Default.ShoppingCart, Color(0xFFFDE7E1), Modifier.weight(1f))
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Invita Amigo
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EAF6))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF626F47)),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Share, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Box(contentAlignment = Alignment.BottomEnd) {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFDE7E1)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    usuario.nombre.firstOrNull()?.uppercaseChar()?.toString() ?: "U",
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF8D4934)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = 4.dp, y = 4.dp)
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF8D4934))
+                                    .padding(2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Lvl ${1 + (donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados)/2}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        
+                        Spacer(Modifier.width(16.dp))
+                        
+                        Column {
+                            Text(usuario.nombre, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D1B20))
+                            Text("GUARDIÁN DE LA TIERRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8D4934).copy(alpha = 0.7f))
+                            Spacer(Modifier.height(8.dp))
+                            val progreso = ((donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados) % 2) * 0.5f
+                            LinearProgressIndicator(
+                                progress = { if (progreso == 0f && (donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados) > 0) 1f else progreso.coerceAtLeast(0.1f) },
+                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                                color = Color(0xFF626F47),
+                                trackColor = Color(0xFFEEEEEE)
+                            )
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Puntos Huella: ${(donacionesRealizadas * 100) + (solicitudesAprobadas * 500) + (perrosPerdidosReportados * 200)}", fontSize = 10.sp, color = Color.Gray)
+                                Text("Nivel: ${1 + (donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados)/2}", fontSize = 10.sp, color = Color.Gray)
+                            }
+                        }
                     }
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Invita a un amigo", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Gana 500 Puntos Huella extra", fontSize = 12.sp, color = Color.Gray)
-                    }
-                    Icon(Icons.Default.ChevronRight, null, tint = Color.Gray)
                 }
+    
+                Spacer(Modifier.height(24.dp))
+                Text("Tus Medallas", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MedallaItem("Donante Oro", Icons.Default.VolunteerActivism, 
+                        if (donacionesRealizadas > 5) Color(0xFFF1F8E9) else Color(0xFFF5F5F5), 
+                        if (donacionesRealizadas > 5) Color(0xFF558B2F) else Color(0xFF616161), 
+                        Modifier.weight(1f))
+                    MedallaItem("Eco Amigo", Icons.Default.Eco, 
+                        if (donacionesRealizadas > 0) Color(0xFFFCE4EC) else Color(0xFFF5F5F5), 
+                        if (donacionesRealizadas > 0) Color(0xFF880E4F) else Color(0xFF616161), 
+                        Modifier.weight(1f))
+                    MedallaItem("Adoptante", Icons.Default.Pets, 
+                        if (solicitudesAprobadas > 0) Color(0xFFE8EAF6) else Color(0xFFF5F5F5), 
+                        if (solicitudesAprobadas > 0) Color(0xFF3F51B5) else Color(0xFF616161), 
+                        Modifier.weight(1f))
+                    MedallaItem("Rescatista", Icons.Default.Handshake, 
+                        if (perrosPerdidosReportados > 0) Color(0xFFFFF3E0) else Color(0xFFF5F5F5), 
+                        if (perrosPerdidosReportados > 0) Color(0xFFE65100) else Color(0xFF616161), 
+                        Modifier.weight(1f))
+                }
+    
+                Spacer(Modifier.height(24.dp))
+    
+                // Calculadora Impacto
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF8D4934))
+                ) {
+                    Column(Modifier.padding(20.dp)) {
+                        Text("Calculadora de Impacto", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(16.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ImpactoBox("${solicitudesAprobadas}", "Mascotas con nuevo hogar", Icons.Default.Home, Modifier.weight(1f))
+                            ImpactoBox("${donacionesRealizadas}", "Artículos donados", Icons.Default.Autorenew, Modifier.weight(1f))
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Button(
+                            onClick = { },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Ver desglose detallado", color = Color(0xFF8D4934), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+    
+                Spacer(Modifier.height(24.dp))
+                Text("Historial de Actividad", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+    
+                Row(Modifier.fillMaxWidth().height(200.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Tarjeta grande izquierda
+                    Card(
+                        modifier = Modifier.weight(1.2f).fillMaxHeight(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFDCEDC8))
+                    ) {
+                        Column(Modifier.padding(16.dp).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                            Column {
+                                Icon(Icons.Default.History, null, tint = Color(0xFF33691E))
+                                Spacer(Modifier.height(12.dp))
+                                Text("Donación Mensual", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1B5E20))
+                                Text("Protectora Huellitas", fontSize = 12.sp, color = Color(0xFF33691E).copy(alpha = 0.7f))
+                            }
+                            Column {
+                                Text("$0", fontSize = 32.sp, fontWeight = FontWeight.Black, color = Color(0xFF1B5E20))
+                                Text("Sin actividad reciente", fontSize = 10.sp, color = Color(0xFF33691E).copy(alpha = 0.7f))
+                            }
+                        }
+                    }
+    
+                    // Columna de tarjetas pequeñas
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ActividadPequena("Voluntariado", "Caminata Canina", Icons.Default.CalendarToday, Color(0xFFEEEEEE), Modifier.weight(1f))
+                        ActividadPequena("Compra Eco", "Cama orgánica", Icons.Default.ShoppingCart, Color(0xFFFDE7E1), Modifier.weight(1f))
+                    }
+                }
+    
+                Spacer(Modifier.height(24.dp))
+    
+                // Invita Amigo
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EAF6))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF626F47)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Share, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Invita a un amigo", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("Gana 50 puntos huella por cada amigo que se una.", fontSize = 12.sp, color = Color.Gray)
+                        }
+                        IconButton(onClick = { }) {
+                            Icon(Icons.Default.ChevronRight, null)
+                        }
+                    }
+                }
+                
+                Spacer(Modifier.height(40.dp))
             }
 
-            Spacer(Modifier.height(40.dp))
+            // Overlay de carga (Shimmer/Progress)
+            if (isRefreshing) {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF8D4934))
+                }
+            }
         }
     }
 }

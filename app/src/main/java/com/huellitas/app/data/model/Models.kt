@@ -18,7 +18,9 @@ data class Usuario(
 data class PerroAdopcion(
     val id: String = "",
     val nombre: String = "",
+    val especie: String = "Perro",    // "Perro", "Gato", "Otro"
     val raza: String = "",
+    val tamano: String = "Mediano",  // "Pequeño", "Mediano", "Grande"
     val color: String = "",
     val edad: String = "",
     val descripcion: String = "",
@@ -42,7 +44,9 @@ data class SolicitudAdopcion(
 data class PerroPerdido(
     val id: String = "",
     val nombre: String = "",
+    val especie: String = "Perro",
     val raza: String = "",
+    val tamano: String = "Mediano",
     val color: String = "",
     val descripcion: String = "",
     val fotoUri: String = "",
