@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Announcement
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -48,7 +49,7 @@ fun DonarArticulosScreen(
     onVolver: () -> Unit,
     onIrAFormulario: () -> Unit,
     onNavigateToCatalogo: () -> Unit = {},
-    onNavigateToMatch: () -> Unit = {},
+    onNavigateToPerdidos: () -> Unit = {},
     onNavigateToImpacto: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -144,9 +145,9 @@ fun DonarArticulosScreen(
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = onNavigateToMatch,
-                    icon = { Icon(Icons.Default.FavoriteBorder, null) },
-                    label = { Text("Match", fontSize = 10.sp) },
+                    onClick = onNavigateToPerdidos,
+                    icon = { Icon(Icons.AutoMirrored.Filled.Announcement, null) },
+                    label = { Text("Perdidos", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),

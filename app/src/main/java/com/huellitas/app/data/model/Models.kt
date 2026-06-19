@@ -21,6 +21,8 @@ data class PerroAdopcion(
     val especie: String = "Perro",    // "Perro", "Gato", "Otro"
     val raza: String = "",
     val tamano: String = "Mediano",  // "Pequeño", "Mediano", "Grande"
+    val sexo: String = "Macho",      // "Macho", "Hembra"
+    val energia: String = "Media",   // "Baja", "Media", "Alta"
     val color: String = "",
     val edad: String = "",
     val descripcion: String = "",
@@ -38,7 +40,19 @@ data class SolicitudAdopcion(
     val usuarioId: String = "",
     val estado: String = "pendiente",   // "pendiente", "aprobada", "rechazada"
     val fecha: String = "",
-    val mensaje: String = ""
+    val mensaje: String = "",
+    // Campos nuevos del formulario
+    val nombreCompleto: String = "",
+    val direccion: String = "",
+    val tipoVivienda: String = "",
+    val tieneMascotas: Boolean = false,
+    val infoMascotas: String = "",
+    val compromiso: Boolean = false,
+    val firma: String = "",
+    // Campos del paso 2 (Estilo de Vida)
+    val tiempoSola: String = "",
+    val responsable: String = "",
+    val presupuestoOk: Boolean = false
 )
 
 data class PerroPerdido(

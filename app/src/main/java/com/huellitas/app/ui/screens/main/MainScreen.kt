@@ -63,9 +63,9 @@ fun MainScreen(
         perrosFiltrados = when (filtroSeleccionado) {
             "Todos" -> todosLosPerros
             "Perros" -> todosLosPerros.filter { !it.raza.contains("Gato", true) }
-            "Gatos" -> todosLosPerros.filter { it.raza.contains("Gato", true) }
+            "Gatos" -> todosLosPerros.filter { it.especie.contains("Gato", true) }
             "Cachorros" -> todosLosPerros.filter { it.edad.contains("Meses", true) || it.edad.contains("Cachorro", true) }
-            "Energía Baja" -> todosLosPerros.filter { it.descripcion.contains("tranquilo", true) || it.descripcion.contains("calma", true) }
+            "Energía Baja" -> todosLosPerros.filter { it.energia == "Baja" }
             else -> todosLosPerros
         }.take(8)
     }

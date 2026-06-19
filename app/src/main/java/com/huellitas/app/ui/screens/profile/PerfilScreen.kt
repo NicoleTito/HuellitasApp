@@ -1,6 +1,7 @@
 package com.huellitas.app.ui.screens.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -30,6 +31,7 @@ fun PerfilScreen(
     usuario: Usuario,
     onActualizarUsuario: (Usuario) -> Unit,
     onIrAAdmin: () -> Unit = {},
+    onIrAMisSolicitudes: () -> Unit = {},
     onCerrarSesion: () -> Unit
 ) {
     val repo    = remember { HuellitasRepository() }
@@ -208,43 +210,50 @@ fun PerfilScreen(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // ── Mis solicitudes ───────────────────────────
-            TarjetaSeccion {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Text("Mis solicitudes", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = GrisTexto)
-                    Box(
-                        modifier         = Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(NaranjaHuellitas),
-                        contentAlignment = Alignment.Center
+            // ── Mis solicitudes (Solo visible para usuarios normales/voluntarios) ──────
+            if (usuario.rol != "albergue") {
+                Spacer(Modifier.height(16.dp))
+                TarjetaSeccion {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onIrAMisSolicitudes() },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("${solicitudes.size}", color = BlancoPuro, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Mis solicitudes", fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = GrisTexto)
+                            Spacer(Modifier.width(8.dp))
+                            Icon(Icons.Default.OpenInNew, null, tint = NaranjaHuellitas, modifier = Modifier.size(16.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(NaranjaHuellitas),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("${solicitudes.size}", color = BlancoPuro, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
-                }
 
-                Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                if (solicitudes.isEmpty()) {
-                    Column(
-                        modifier            = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("", fontSize = 32.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Text("Aún no has solicitado\nninguna adopción", color = GrisSecundario, fontSize = 13.sp)
-                    }
-                } else {
-                    solicitudes.forEach { sol ->
-                        TarjetaSolicitud(solicitud = sol)
-                        if (sol != solicitudes.last()) {
-                            Divider(color = NaranjaClaro, thickness = 1.dp)
+                    if (solicitudes.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("", fontSize = 32.sp)
+                            Spacer(Modifier.height(6.dp))
+                            Text("Aún no has solicitado\nninguna adopción", color = GrisSecundario, fontSize = 13.sp)
+                        }
+                    } else {
+                        solicitudes.forEach { sol ->
+                            TarjetaSolicitud(solicitud = sol)
+                            if (sol != solicitudes.last()) {
+                                Divider(color = NaranjaClaro, thickness = 1.dp)
+                            }
                         }
                     }
                 }

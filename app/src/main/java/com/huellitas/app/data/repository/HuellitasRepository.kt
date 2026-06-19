@@ -138,6 +138,15 @@ class HuellitasRepository(context: Context? = null) {
         }
     }
 
+    suspend fun obtenerPerroPorId(id: String): PerroAdopcion? {
+        return try {
+            val doc = db.collection("pets").document(id).get().await()
+            doc.toObject(PerroAdopcion::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun obtenerPerrosPorFiltro(raza: String = "", zona: String = ""): List<PerroAdopcion> {
         return try {
             var query: Query = db.collection("pets")
@@ -160,6 +169,15 @@ class HuellitasRepository(context: Context? = null) {
     suspend fun actualizarPerfilMascota(perro: PerroAdopcion): Boolean {
         return try {
             db.collection("pets").document(perro.id).set(perro).await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun actualizarEstadoMascota(perroId: String, nuevoEstado: String): Boolean {
+        return try {
+            db.collection("pets").document(perroId).update("estado", nuevoEstado).await()
             true
         } catch (e: Exception) {
             false

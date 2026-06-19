@@ -280,19 +280,25 @@ fun PantallaResultado(
             
             // Filtro de Energía (Pregunta 3)
             val buscaTranquilo = respuestas.getOrNull(3) == 0
-            val buscaActivo = respuestas.getOrNull(3) == 1 || respuestas.getOrNull(3) == 2
+            val buscaActivo = respuestas.getOrNull(3) == 1
+            val buscaMuyJugueton = respuestas.getOrNull(3) == 2
             
-            if (buscaTranquilo && (perro.descripcion.contains("tranquilo", true) || perro.descripcion.contains("calma", true))) puntos += 3
-            if (buscaActivo && (perro.descripcion.contains("activo", true) || perro.descripcion.contains("juguetón", true) || perro.descripcion.contains("energía", true))) puntos += 3
+            if (buscaTranquilo && perro.energia == "Baja") puntos += 4
+            if (buscaActivo && perro.energia == "Media") puntos += 4
+            if (buscaMuyJugueton && perro.energia == "Alta") puntos += 4
             
             // Filtro de Tamaño/Espacio (Pregunta 1)
             val viveEnDepto = respuestas.getOrNull(1) == 0
-            if (viveEnDepto && perro.tamano == "Pequeño") puntos += 2
-            if (!viveEnDepto && (perro.tamano == "Grande" || perro.tamano == "Mediano")) puntos += 2
+            val viveEnCasa = respuestas.getOrNull(1) == 1
+            val viveEnGranja = respuestas.getOrNull(1) == 2
+
+            if (viveEnDepto && perro.tamano == "Pequeño") puntos += 3
+            if (viveEnCasa && (perro.tamano == "Mediano" || perro.tamano == "Pequeño")) puntos += 3
+            if (viveEnGranja) puntos += 3 // Granja le va bien a cualquiera
             
             // Filtro de Niños (Pregunta 2)
             val tieneNinos = respuestas.getOrNull(2) == 0
-            if (tieneNinos && (perro.descripcion.contains("niños", true) || perro.descripcion.contains("noble", true))) puntos += 2
+            if (tieneNinos && (perro.descripcion.contains("niños", true) || perro.descripcion.contains("noble", true) || perro.descripcion.contains("dócil", true))) puntos += 2
 
             perro to puntos
         }

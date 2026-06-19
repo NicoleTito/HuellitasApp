@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Announcement
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -37,7 +38,7 @@ fun ImpactoScreen(
     usuario: com.huellitas.app.data.model.Usuario,
     onVolver: () -> Unit,
     onNavigateToCatalogo: () -> Unit = {},
-    onNavigateToMatch: () -> Unit = {},
+    onNavigateToPerdidos: () -> Unit = {},
     onNavigateToCircular: () -> Unit = {}
 ) {
     val repo = remember { com.huellitas.app.data.repository.HuellitasRepository() }
@@ -116,9 +117,9 @@ fun ImpactoScreen(
                 )
                 NavigationBarItem(
                     selected = false,
-                    onClick = onNavigateToMatch,
-                    icon = { Icon(Icons.Default.FavoriteBorder, null) },
-                    label = { Text("Match", fontSize = 10.sp) },
+                    onClick = onNavigateToPerdidos,
+                    icon = { Icon(Icons.AutoMirrored.Filled.Announcement, null) },
+                    label = { Text("Perdidos", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
@@ -143,7 +144,7 @@ fun ImpactoScreen(
                 NavigationBarItem(
                     selected = true,
                     onClick = { },
-                    icon = { Icon(Icons.Default.Person, null) },
+                    icon = { Icon(Icons.Default.PersonOutline, null) },
                     label = { Text("Impacto", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFFE67E5D),

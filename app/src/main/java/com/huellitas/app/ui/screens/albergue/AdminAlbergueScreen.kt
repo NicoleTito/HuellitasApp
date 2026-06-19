@@ -192,13 +192,13 @@ fun ListaSolicitudesRecibidas(
                 
                 LaunchedEffect(sol.usuarioId) {
                     usuarioData = repo.obtenerUsuarioPorId(sol.usuarioId)
-                    // Para obtener el nombre del perro (simplificado)
-                    val perros = repo.obtenerPerrosDisponibles()
-                    perroData = perros.find { it.id == sol.perroId }
+                    perroData = repo.obtenerPerroPorId(sol.perroId)
                 }
 
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        // Navegar a detalle de solicitud o expandir
+                    },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = BlancoPuro)
                 ) {
@@ -209,15 +209,33 @@ fun ListaSolicitudesRecibidas(
                             }
                             Spacer(Modifier.width(10.dp))
                             Column {
-                                Text(usuarioData?.nombre ?: "Usuario", fontWeight = FontWeight.Bold)
-                                Text("Interesado en: ${perroData?.nombre ?: "Cargando..."}", fontSize = 13.sp, color = GrisSecundario)
+                                Text(sol.nombreCompleto.ifBlank { usuarioData?.nombre ?: "Usuario" }, fontWeight = FontWeight.Bold)
+                                Text("Interesado en: ${perroData?.nombre ?: "..."}", fontSize = 13.sp, color = GrisSecundario)
                             }
                             Spacer(Modifier.weight(1f))
                             ChipEstado(sol.estado)
                         }
                         
-                        Spacer(Modifier.height(10.dp))
-                        Text(sol.mensaje, fontSize = 14.sp, color = GrisTexto)
+                        if (sol.nombreCompleto.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("📍 ${sol.direccion}", fontSize = 12.sp, color = GrisSecundario)
+                            Text("🏠 ${sol.tipoVivienda}", fontSize = 12.sp, color = GrisSecundario)
+                        }
+
+                        if (sol.mensaje.isNotBlank()) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(sol.mensaje, fontSize = 14.sp, color = GrisTexto)
+                        }
+
+                        if (sol.compromiso) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Verified, null, tint = VerdeExito, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Compromiso firmado por: ${sol.firma}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = VerdeExito)
+                            }
+                        }
+
                         Spacer(Modifier.height(12.dp))
                         
                         if (sol.estado == "pendiente") {
@@ -225,7 +243,10 @@ fun ListaSolicitudesRecibidas(
                                 Button(
                                     onClick = {
                                         scope.launch {
-                                            repo.actualizarEstadoSolicitud(sol.id, "aprobada")
+                                            val ok = repo.actualizarEstadoSolicitud(sol.id, "aprobada")
+                                            if (ok) {
+                                                repo.actualizarEstadoMascota(sol.perroId, "adoptado")
+                                            }
                                             onUpdate()
                                         }
                                     },
