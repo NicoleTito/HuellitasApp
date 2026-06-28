@@ -48,7 +48,8 @@ fun MainScreen(
     onIrAApoyo: () -> Unit,
     onCerrarSesion: () -> Unit
 ) {
-    val repo = remember { HuellitasRepository() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repo = remember { HuellitasRepository(context) }
     var todosLosPerros by remember { mutableStateOf(emptyList<PerroAdopcion>()) }
     var perrosFiltrados by remember { mutableStateOf(emptyList<PerroAdopcion>()) }
     var filtroSeleccionado by remember { mutableStateOf("Todos") }

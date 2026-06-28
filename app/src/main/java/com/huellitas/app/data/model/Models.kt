@@ -84,3 +84,15 @@ data class ArticuloDonacion(
     val fechaPublicacion: String = "",
     val estado: String = "disponible" // "disponible", "entregado"
 )
+
+data class HistoriaAdopcion(
+    val id: String = "",
+    val titulo: String = "",
+    val descripcion: String = "",
+    val autorNombre: String = "",
+    val autorId: String = "",
+    val fotoUri: String = "",
+    val fechaPublicacion: String = "",
+    val especie: String = "Perro", // Para filtros
+    val destacada: Boolean = false
+)

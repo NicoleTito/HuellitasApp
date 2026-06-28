@@ -3,6 +3,7 @@ package com.huellitas.app.ui.screens.match
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -40,8 +42,10 @@ data class Pregunta(
 fun MatchScreen(
     usuario: com.huellitas.app.data.model.Usuario,
     onVolver: () -> Unit,
-    onIrACatalogo: () -> Unit = {}
+    onIrACatalogo: () -> Unit = {},
+    onIrAPerfil: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var mostrarTest by remember { mutableStateOf(false) }
     var preguntaActualIndex by remember { mutableStateOf(0) }
     val respuestas = remember { mutableStateListOf<Int>() }
@@ -102,7 +106,8 @@ fun MatchScreen(
                                 .padding(end = 16.dp)
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFFDE7E1)),
+                                .background(Color(0xFFFDE7E1))
+                                .clickable { onIrAPerfil() },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -266,7 +271,8 @@ fun PantallaResultado(
     onFinalizar: () -> Unit,
     onIrACatalogo: () -> Unit
 ) {
-    val repo = remember { com.huellitas.app.data.repository.HuellitasRepository() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repo = remember { com.huellitas.app.data.repository.HuellitasRepository(context) }
     var perrosMatch by remember { mutableStateOf<List<com.huellitas.app.data.model.PerroAdopcion>>(emptyList()) }
     var otrosPerros by remember { mutableStateOf<List<com.huellitas.app.data.model.PerroAdopcion>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }

@@ -2,6 +2,7 @@ package com.huellitas.app.ui.screens.adoption
 
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
@@ -21,6 +22,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import android.widget.Toast
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.*
@@ -46,8 +52,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.huellitas.app.data.model.HistoriaAdopcion
 import com.huellitas.app.data.model.PerroAdopcion
 import com.huellitas.app.data.model.SolicitudAdopcion
+import com.huellitas.app.data.model.Usuario
 import com.huellitas.app.data.repository.HuellitasRepository
 import com.huellitas.app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -60,6 +68,7 @@ import kotlinx.coroutines.launch
 fun AdopcionListScreen(
     usuario: com.huellitas.app.data.model.Usuario,
     onVerDetalle: (PerroAdopcion) -> Unit,
+    onIrAPerfil: () -> Unit = {},
     onNavigateToMatch: () -> Unit = {},
     onNavigateToCircular: () -> Unit = {},
     onNavigateToImpacto: () -> Unit = {},
@@ -75,10 +84,12 @@ fun AdopcionListScreen(
     var filtroEspecie by remember { mutableStateOf("Todos") }
     var filtroTamano by remember { mutableStateOf("Todos") }
     var cargando by remember { mutableStateOf(true) }
+    var favoritosIds by remember { mutableStateOf(setOf<String>()) }
 
     LaunchedEffect(Unit) {
         cargando = true
         perros = repo.obtenerPerrosDisponibles()
+        favoritosIds = repo.obtenerFavoritosIds(usuario.id)
         cargando = false
     }
 
@@ -97,11 +108,16 @@ fun AdopcionListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { /* Notificaciones */ }) {
                         Icon(Icons.Outlined.NotificationsNone, null, tint = GrisTexto)
                     }
                     Box(
-                        modifier = Modifier.padding(end = 16.dp).size(36.dp).clip(CircleShape).background(Color(0xFFFDE7E1)),
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFDE7E1))
+                            .clickable { onIrAPerfil() },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -163,7 +179,7 @@ fun AdopcionListScreen(
                 NavigationBarItem(
                     selected = false,
                     onClick = onNavigateToCircular,
-                    icon = { Icon(Icons.Default.Eco, null) },
+                    icon = { Icon(Icons.Default.Autorenew, null) },
                     label = { Text("Circular", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFFE67E5D),
@@ -277,7 +293,19 @@ fun AdopcionListScreen(
                 items(6) { SkeletonMascota() }
             } else {
                 items(perrosFiltrados) { perro ->
-                    TarjetaMascotaGrid(perro) { onVerDetalle(perro) }
+                    TarjetaMascotaGrid(
+                        perro = perro,
+                        isFavorito = favoritosIds.contains(perro.id),
+                        onToggleFavorito = {
+                            scope.launch {
+                                repo.toggleFavorito(usuario.id, perro.id)
+                                favoritosIds = repo.obtenerFavoritosIds(usuario.id)
+                                val msg = if (perro.id in favoritosIds) "Agregado a favoritos" else "Eliminado de favoritos"
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onClick = { onVerDetalle(perro) }
+                    )
                 }
             }
 
@@ -288,7 +316,12 @@ fun AdopcionListScreen(
 }
 
 @Composable
-fun TarjetaMascotaGrid(perro: PerroAdopcion, onClick: () -> Unit) {
+fun TarjetaMascotaGrid(
+    perro: PerroAdopcion,
+    isFavorito: Boolean,
+    onToggleFavorito: () -> Unit,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
@@ -315,10 +348,21 @@ fun TarjetaMascotaGrid(perro: PerroAdopcion, onClick: () -> Unit) {
                     }
                 }
                 Box(
-                    modifier = Modifier.padding(8.dp).size(32.dp).align(Alignment.TopEnd).clip(CircleShape).background(BlancoPuro.copy(alpha = 0.8f)),
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .size(32.dp)
+                        .align(Alignment.TopEnd)
+                        .clip(CircleShape)
+                        .background(BlancoPuro.copy(alpha = 0.8f))
+                        .clickable { onToggleFavorito() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.FavoriteBorder, null, modifier = Modifier.size(18.dp), tint = GrisTexto)
+                    Icon(
+                        if (isFavorito) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (isFavorito) Color.Red else GrisTexto
+                    )
                 }
             }
             Column(Modifier.padding(12.dp)) {
@@ -388,20 +432,19 @@ fun DetalleAdopcionScreen(
     val scope = rememberCoroutineScope()
     
     var albergue by remember { mutableStateOf<com.huellitas.app.data.model.Usuario?>(null) }
-    var mensaje by remember { mutableStateOf("") }
-    var resultado by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
-    var enviando by remember { mutableStateOf(false) }
     var enviado by remember { mutableStateOf(false) }
+    var esFavorito by remember { mutableStateOf(false) }
 
-    LaunchedEffect(perro.albergueId) {
+    LaunchedEffect(perro.id) {
         albergue = repo.obtenerUsuarioPorId(perro.albergueId)
+        esFavorito = repo.esFavorito(usuario.id, perro.id)
     }
 
     Scaffold(
         containerColor = BlancoPuro,
         bottomBar = {
-            if (usuario.rol != "albergue" && perro.estado == "disponible" && !enviado) {
+            val esDuenio = usuario.id == perro.albergueId
+            if (!esDuenio && usuario.rol != "albergue" && perro.estado == "disponible" && !enviado) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shadowElevation = 16.dp,
@@ -428,10 +471,13 @@ fun DetalleAdopcionScreen(
                             onClick = {
                                 val tel = albergue?.telefono
                                 if (!tel.isNullOrBlank()) {
+                                    val url = "https://api.whatsapp.com/send?phone=$tel&text=Hola, te escribo desde HuellitasApp. Estoy interesado en adoptar a ${perro.nombre} 🐾"
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("https://api.whatsapp.com/send?phone=$tel&text=Hola, te escribo desde HuellitasApp. Estoy interesado en adoptar a ${perro.nombre} 🐾")
+                                        data = url.toUri()
                                     }
                                     context.startActivity(intent)
+                                } else {
+                                    Toast.makeText(context, "El albergue no tiene WhatsApp registrado", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.weight(1f).height(56.dp),
@@ -476,13 +522,40 @@ fun DetalleAdopcionScreen(
                             onClick = onVolver,
                             modifier = Modifier.size(40.dp).background(BlancoPuro.copy(alpha = 0.8f), CircleShape)
                         ) {
-                            Icon(Icons.Default.ArrowBack, "Volver", tint = GrisTexto)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = GrisTexto)
                         }
-                        IconButton(
-                            onClick = { /* Like */ },
-                            modifier = Modifier.size(40.dp).background(BlancoPuro.copy(alpha = 0.8f), CircleShape)
-                        ) {
-                            Icon(Icons.Default.FavoriteBorder, "Favorito", tint = Color.Red)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(
+                                onClick = {
+                                    val sendIntent: Intent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, "¡Mira a ${perro.nombre} en HuellitasApp! 🐾\nEs un ${perro.raza} buscando hogar.\n\n${perro.descripcion}")
+                                        type = "text/plain"
+                                    }
+                                    val shareIntent = Intent.createChooser(sendIntent, null)
+                                    context.startActivity(shareIntent)
+                                },
+                                modifier = Modifier.size(40.dp).background(BlancoPuro.copy(alpha = 0.8f), CircleShape)
+                            ) {
+                                Icon(Icons.Default.Share, "Compartir", tint = GrisTexto)
+                            }
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        repo.toggleFavorito(usuario.id, perro.id)
+                                        esFavorito = !esFavorito
+                                        val msg = if (esFavorito) "Añadido a favoritos" else "Eliminado de favoritos"
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.size(40.dp).background(BlancoPuro.copy(alpha = 0.8f), CircleShape)
+                            ) {
+                                Icon(
+                                    if (esFavorito) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    "Favorito",
+                                    tint = Color.Red
+                                )
+                            }
                         }
                     }
                 }
@@ -578,8 +651,62 @@ fun DetalleAdopcionScreen(
                             Text("ALBERGUE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = GrisSecundario)
                             Text(perro.albergueNombre, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = GrisTexto)
                         }
-                        IconButton(onClick = { /* Mapa */ }) {
-                            Icon(Icons.Default.Map, null, tint = GrisSecundario)
+                        Row {
+                            IconButton(onClick = {
+                                val email = albergue?.email
+                                if (!email.isNullOrBlank()) {
+                                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                        data = "mailto:$email".toUri()
+                                        putExtra(Intent.EXTRA_SUBJECT, "Interés en adopción: ${perro.nombre}")
+                                        putExtra(Intent.EXTRA_TEXT, "Hola ${perro.albergueNombre}, vi a ${perro.nombre} en HuellitasApp y me gustaría recibir más información.")
+                                    }
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "No hay apps de correo instaladas", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }) {
+                                Icon(Icons.Default.Email, "Enviar correo", tint = GrisSecundario)
+                            }
+                            IconButton(onClick = {
+                                val tel = albergue?.telefono
+                                if (!tel.isNullOrBlank()) {
+                                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                                        data = "tel:$tel".toUri()
+                                    }
+                                    context.startActivity(intent)
+                                } else {
+                                    Toast.makeText(context, "El albergue no tiene teléfono registrado", Toast.LENGTH_SHORT).show()
+                                }
+                            }) {
+                                Icon(Icons.Default.Phone, "Llamar", tint = GrisSecundario)
+                            }
+                            IconButton(onClick = {
+                                val lat = albergue?.latitud
+                                val lon = albergue?.longitud
+                                if (lat != null && lon != null) {
+                                    val gmmIntentUri = "geo:$lat,$lon?q=$lat,$lon(${perro.albergueNombre})".toUri()
+                                    val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                    mapIntent.setPackage("com.google.android.apps.maps")
+                                    try {
+                                        context.startActivity(mapIntent)
+                                    } catch (e: Exception) {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, gmmIntentUri))
+                                    }
+                                } else {
+                                    val addr = albergue?.direccion
+                                    if (!addr.isNullOrBlank()) {
+                                        val gmmIntentUri = "geo:0,0?q=${Uri.encode(addr)}".toUri()
+                                        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                        context.startActivity(mapIntent)
+                                    } else {
+                                        Toast.makeText(context, "Ubicación no disponible", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }) {
+                                Icon(Icons.Default.Map, "Ver en mapa", tint = GrisSecundario)
+                            }
                         }
                     }
                 }
@@ -626,26 +753,6 @@ fun ChipSalud(texto: String, icono: androidx.compose.ui.graphics.vector.ImageVec
     }
 }
 
-@Composable
-fun FilaInfo(etiqueta: String, valor: String) {
-    if (valor.isBlank()) return
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(etiqueta, color = GrisSecundario, fontSize = 14.sp)
-        Text(valor, color = GrisTexto, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-fun ChipEstado(estado: String) {
-    val color = when(estado) {
-        "disponible" -> VerdeExito
-        "en_proceso" -> AmarilloAlerta
-        else -> GrisSecundario
-    }
-    Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-        Text(estado.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = color)
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -659,7 +766,7 @@ fun FormularioAdopcionScreen(
     val repo = remember { HuellitasRepository(context) }
     val scope = rememberCoroutineScope()
     
-    var paso by remember { mutableStateOf(1) }
+    var paso by remember { mutableIntStateOf(1) }
     
     // Paso 1
     var nombreCompleto by remember { mutableStateOf(usuario.nombre) }
@@ -737,7 +844,7 @@ fun FormularioAdopcionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = { if(paso > 1) paso-- else onVolver() }) {
-                        Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Atrás", color = GrisTexto)
                     }
@@ -790,7 +897,7 @@ fun FormularioAdopcionScreen(
                         if (enviando) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                         } else {
-                            Icon(if(paso == 3) Icons.Default.CheckCircle else Icons.Default.ArrowForward, null, modifier = Modifier.size(20.dp))
+                            Icon(if(paso == 3) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -1181,7 +1288,7 @@ fun MisSolicitudesScreen(
             TopAppBar(
                 title = { Text("Mis Postulaciones", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onVolver) { Icon(Icons.Default.ArrowBack, null) }
+                    IconButton(onClick = onVolver) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
                 }
             )
         }
@@ -1261,25 +1368,6 @@ fun ChipEstadoSolicitud(estado: String) {
     }
 }
 
-@Composable
-fun CampoTextoForm(label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, singleLine: Boolean = true, modifier: Modifier = Modifier) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GrisTexto)
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder, fontSize = 14.sp, color = Color.LightGray) },
-            modifier = modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = singleLine,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color.White,
-                focusedContainerColor = Color.White,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-            )
-        )
-    }
-}
 
 @Composable
 fun CardMascotaResumen(perro: PerroAdopcion) {
@@ -1353,7 +1441,7 @@ fun PublicarPerroScreen(
         topBar = {
             TopAppBar(
                 title = { Text(if (perroAEditar != null) "Editar Huellita" else "Publicar Huellita", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onVolver) { Icon(Icons.Default.ArrowBack, null) } },
+                navigationIcon = { IconButton(onClick = onVolver) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BlancoPuro)
             )
         },
@@ -1763,7 +1851,7 @@ fun SolicitudExitoScreen(
                     Text("Finales Felices", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     TextButton(onClick = onVerHistorias) {
                         Text("Ver más historias", color = Color(0xFF8D4934), fontSize = 14.sp)
-                        Icon(Icons.Default.ArrowForward, null, modifier = Modifier.size(16.dp), tint = Color(0xFF8D4934))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp), tint = Color(0xFF8D4934))
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -1846,13 +1934,39 @@ fun SolicitudExitoScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoriasAdopcionScreen(onVolver: () -> Unit) {
+fun HistoriasAdopcionScreen(
+    onVolver: () -> Unit,
+    onIrAPublicar: () -> Unit
+) {
+    val context = LocalContext.current
+    val repo = remember { HuellitasRepository(context) }
+    var historias by remember { mutableStateOf<List<HistoriaAdopcion>>(emptyList()) }
+    var filtro by remember { mutableStateOf("Todos") }
+    var cargando by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        historias = repo.obtenerHistoriasAdopcion()
+        cargando = false
+    }
+
+    val historiasFiltradas = if (filtro == "Todos") historias else historias.filter { it.especie == filtro }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Finales Felices", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onVolver) { Icon(Icons.Default.ArrowBack, null) } },
+                navigationIcon = { IconButton(onClick = onVolver) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
                 actions = { IconButton(onClick = {}) { Icon(Icons.Outlined.NotificationsNone, null) } }
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onIrAPublicar,
+                containerColor = Color(0xFFE67E5D),
+                contentColor = BlancoPuro,
+                shape = RoundedCornerShape(16.dp),
+                icon = { Icon(Icons.Default.Edit, null) },
+                text = { Text("Contar mi historia", fontWeight = FontWeight.Bold) }
             )
         }
     ) { padding ->
@@ -1861,23 +1975,49 @@ fun HistoriasAdopcionScreen(onVolver: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text("Inspirate con las historias de amor de nuestra comunidad.", color = GrisSecundario, fontSize = 14.sp)
+                Text("Inspírate con las historias de amor de nuestra comunidad.", color = GrisSecundario, fontSize = 14.sp)
             }
             
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = true, onClick = {}, label = { Text("Todos") }, shape = RoundedCornerShape(20.dp), colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF8D4934), selectedLabelColor = Color.White))
-                    FilterChip(selected = false, onClick = {}, label = { Text("Perros") }, shape = RoundedCornerShape(20.dp), leadingIcon = { Icon(Icons.Default.Pets, null, modifier = Modifier.size(16.dp))})
-                    FilterChip(selected = false, onClick = {}, label = { Text("Gatos") }, shape = RoundedCornerShape(20.dp), leadingIcon = { Icon(Icons.Default.Pets, null, modifier = Modifier.size(16.dp))})
+                    FilterChip(
+                        selected = filtro == "Todos",
+                        onClick = { filtro = "Todos" },
+                        label = { Text("Todos") },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFF8D4934), selectedLabelColor = Color.White)
+                    )
+                    FilterChip(
+                        selected = filtro == "Perro",
+                        onClick = { filtro = "Perro" },
+                        label = { Text("Perros") },
+                        shape = RoundedCornerShape(20.dp),
+                        leadingIcon = { Icon(Icons.Default.Pets, null, modifier = Modifier.size(16.dp)) }
+                    )
+                    FilterChip(
+                        selected = filtro == "Gato",
+                        onClick = { filtro = "Gato" },
+                        label = { Text("Gatos") },
+                        shape = RoundedCornerShape(20.dp),
+                        leadingIcon = { Icon(Icons.Default.Pets, null, modifier = Modifier.size(16.dp)) }
+                    )
                 }
             }
 
-            items(listOf(
-                HistoriaData("La nueva vida de Luna", "Luna pasó 3 años esperando en el refugio. Hoy corre libre en un jardín inmenso...", "Familia Martinez", "https://images.unsplash.com/photo-1534361960057-19889db9621e?q=80&w=400", "Hace 2 días"),
-                HistoriaData("Oliver encontró paz", "Oliver era un gato tímido que ahora es el mejor compañero de lectura de Doñ...", "Don Raúl", "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400", "Hace 1 semana"),
-                HistoriaData("Max y su mejor amigo", "Desde que Max llegó a casa, Lucas no ha dejado de sonreír. Son inseparables...", "Familia Lopez", "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=400", "Hace 3 días")
-            )) { historia ->
-                CardHistoria(historia)
+            if (cargando) {
+                item {
+                    Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFF8D4934))
+                    }
+                }
+            } else if (historiasFiltradas.isEmpty()) {
+                item {
+                    Text("No hay historias para mostrar.", modifier = Modifier.padding(20.dp), textAlign = TextAlign.Center)
+                }
+            } else {
+                items(historiasFiltradas) { historia ->
+                    CardHistoria(historia)
+                }
             }
 
             item {
@@ -1891,7 +2031,7 @@ fun HistoriasAdopcionScreen(onVolver: () -> Unit) {
                         Text("Nos encantaría conocer cómo cambió tu vida al adoptar. Comparte tu final feliz con la comunidad.", fontSize = 14.sp, color = Color.White.copy(alpha = 0.9f))
                         Spacer(Modifier.height(16.dp))
                         Button(
-                            onClick = {},
+                            onClick = onIrAPublicar,
                             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -1914,8 +2054,164 @@ fun HistoriasAdopcionScreen(onVolver: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CardHistoria(historia: HistoriaData) {
+fun PublicarHistoriaScreen(
+    usuario: Usuario,
+    onVolver: () -> Unit,
+    onExito: () -> Unit
+) {
+    val context = LocalContext.current
+    val repo = remember { HuellitasRepository(context) }
+    val scope = rememberCoroutineScope()
+
+    var titulo by remember { mutableStateOf("") }
+    var descripcion by remember { mutableStateOf("") }
+    var especie by remember { mutableStateOf("Perro") }
+    var imagenUri by remember { mutableStateOf<Uri?>(null) }
+
+    var subiendo by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf("") }
+
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        imagenUri = it
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Contar mi Historia", fontWeight = FontWeight.Bold) },
+                navigationIcon = { IconButton(onClick = onVolver) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = BlancoPuro)
+            )
+        },
+        containerColor = CremaBg
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item { Spacer(Modifier.height(8.dp)) }
+
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color.White)
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                        .clickable { picker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imagenUri != null) {
+                        AsyncImage(
+                            model = imagenUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.AddPhotoAlternate, null, modifier = Modifier.size(48.dp), tint = GrisSecundario)
+                            Spacer(Modifier.height(8.dp))
+                            Text("Añadir foto de tu mascota", color = GrisSecundario, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+
+            item {
+                Text("Título de la historia", fontWeight = FontWeight.Bold, color = GrisTexto)
+                OutlinedTextField(
+                    value = titulo,
+                    onValueChange = { titulo = it },
+                    placeholder = { Text("Ej. La llegada de Milo a casa") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = BlancoPuro, unfocusedContainerColor = BlancoPuro)
+                )
+            }
+
+            item {
+                Text("Especie", fontWeight = FontWeight.Bold, color = GrisTexto)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Perro", "Gato", "Otro").forEach { esp ->
+                        FilterChip(
+                            selected = especie == esp,
+                            onClick = { especie = esp },
+                            label = { Text(esp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text("Tu historia", fontWeight = FontWeight.Bold, color = GrisTexto)
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    placeholder = { Text("Cuéntanos cómo se conocieron, anécdotas o cómo ha cambiado tu vida...") },
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = BlancoPuro, unfocusedContainerColor = BlancoPuro)
+                )
+            }
+
+            if (errorMsg.isNotBlank()) {
+                item { Text(errorMsg, color = RojoError, fontWeight = FontWeight.Bold) }
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        if (titulo.isBlank() || descripcion.isBlank() || imagenUri == null) {
+                            errorMsg = "Por favor completa todos los campos y añade una foto"
+                        } else {
+                            scope.launch {
+                                subiendo = true
+                                val fotoUrl = repo.subirImagen(imagenUri!!, "stories")
+                                if (fotoUrl != null) {
+                                    val historia = HistoriaAdopcion(
+                                        titulo = titulo,
+                                        descripcion = descripcion,
+                                        autorNombre = usuario.nombre,
+                                        autorId = usuario.id,
+                                        fotoUri = fotoUrl,
+                                        especie = especie
+                                    )
+                                    repo.agregarHistoria(historia)
+                                    onExito()
+                                } else {
+                                    errorMsg = "Error al subir la imagen"
+                                }
+                                subiendo = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8D4934)),
+                    enabled = !subiendo
+                ) {
+                    if (subiendo) {
+                        CircularProgressIndicator(color = BlancoPuro, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Publicar Historia", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(40.dp)) }
+        }
+    }
+}
+
+@Composable
+fun CardHistoria(historia: HistoriaAdopcion) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -1924,48 +2220,47 @@ fun CardHistoria(historia: HistoriaData) {
     ) {
         Column {
             Box(Modifier.height(200.dp).fillMaxWidth()) {
-                AsyncImage(model = historia.foto, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                Surface(
-                    color = Color(0xFFE67E5D).copy(alpha = 0.9f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.padding(12.dp).align(Alignment.TopEnd)
-                ) {
-                    Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Favorite, null, tint = Color.White, modifier = Modifier.size(12.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Historia Destacada", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (historia.fotoUri.isNotBlank()) {
+                    AsyncImage(model = historia.fotoUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                } else {
+                    Box(Modifier.fillMaxSize().background(Color.LightGray))
+                }
+                
+                if (historia.destacada) {
+                    Surface(
+                        color = Color(0xFFE67E5D).copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.padding(12.dp).align(Alignment.TopEnd)
+                    ) {
+                        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Favorite, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Historia Destacada", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
             Column(Modifier.padding(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(historia.titulo, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(historia.fecha, fontSize = 11.sp, color = GrisSecundario)
+                    Text(historia.fechaPublicacion, fontSize = 11.sp, color = GrisSecundario)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(historia.descripcion, fontSize = 13.sp, color = GrisSecundario)
                 Spacer(Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Box(Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFD7E5A4)), contentAlignment = Alignment.Center) {
-                        Text(historia.autor.first().toString(), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF5A6632))
+                        Text(historia.autorNombre.firstOrNull()?.toString() ?: "U", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF5A6632))
                     }
                     Spacer(Modifier.width(8.dp))
-                    Text(historia.autor, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                    Text(historia.autorNombre, fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = {}) {
                         Text("Leer más", color = Color(0xFF8D4934), fontWeight = FontWeight.Bold)
-                        Icon(Icons.Default.ArrowForward, null, modifier = Modifier.size(16.dp), tint = Color(0xFF8D4934))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, modifier = Modifier.size(16.dp), tint = Color(0xFF8D4934))
                     }
                 }
             }
         }
     }
 }
-
-data class HistoriaData(
-    val titulo: String,
-    val descripcion: String,
-    val autor: String,
-    val foto: String,
-    val fecha: String
-)

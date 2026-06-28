@@ -34,7 +34,8 @@ fun PerfilScreen(
     onIrAMisSolicitudes: () -> Unit = {},
     onCerrarSesion: () -> Unit
 ) {
-    val repo    = remember { HuellitasRepository() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repo    = remember { HuellitasRepository(context) }
     val scope   = rememberCoroutineScope()
 
     var modoEdicion  by remember { mutableStateOf(false) }

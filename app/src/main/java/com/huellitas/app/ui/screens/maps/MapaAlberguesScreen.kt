@@ -30,8 +30,8 @@ import com.huellitas.app.ui.theme.NaranjaHuellitas
 fun MapaAlberguesScreen(
     onVolver: () -> Unit
 ) {
-    val repo = remember { HuellitasRepository() }
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repo = remember { HuellitasRepository(context) }
     var albergues by remember { mutableStateOf(emptyList<Usuario>()) }
     var albergueSeleccionado by remember { mutableStateOf<Usuario?>(null) }
 

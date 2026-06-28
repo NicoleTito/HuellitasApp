@@ -7,12 +7,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,7 +32,8 @@ fun LoginScreen(
     onLoginExitoso: (Usuario) -> Unit,
     onIrARegistro: () -> Unit
 ) {
-    val repo    = remember { HuellitasRepository() }
+    val context = LocalContext.current
+    val repo    = remember { HuellitasRepository(context) }
     val scope   = rememberCoroutineScope()
 
     var email       by remember { mutableStateOf("") }
@@ -166,7 +168,8 @@ fun RegistroScreen(
     onRegistroExitoso: (Usuario) -> Unit,
     onVolver: () -> Unit
 ) {
-    val repo    = remember { HuellitasRepository() }
+    val context = LocalContext.current
+    val repo    = remember { HuellitasRepository(context) }
     val scope   = rememberCoroutineScope()
 
     var nombre    by remember { mutableStateOf("") }
@@ -198,7 +201,7 @@ fun RegistroScreen(
             // Top bar
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onVolver) {
-                    Icon(Icons.Default.ArrowBack, "Volver", tint = GrisTexto)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = GrisTexto)
                 }
                 Spacer(Modifier.weight(1f))
                 LogoHuellitas()

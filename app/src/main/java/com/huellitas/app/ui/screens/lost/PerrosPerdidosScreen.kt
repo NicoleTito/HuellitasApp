@@ -1,6 +1,8 @@
 package com.huellitas.app.ui.screens.lost
 
+import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Announcement
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +42,8 @@ fun PerrosPerdidosScreen(
     onVolver: () -> Unit,
     onNavigateToCatalogo: () -> Unit = {},
     onNavigateToCircular: () -> Unit = {},
-    onNavigateToImpacto: () -> Unit = {}
+    onNavigateToImpacto: () -> Unit = {},
+    onIrAPerfil: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val repo = remember { HuellitasRepository(context) }
@@ -74,6 +78,22 @@ fun PerrosPerdidosScreen(
                 actions = {
                     IconButton(onClick = { scope.launch { perrosPerdidos = repo.obtenerPerrosPerdidos() } }) {
                         Icon(Icons.Default.Refresh, null, tint = NaranjaHuellitas)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFDE7E1))
+                            .clickable { onIrAPerfil() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            usuario.nombre.firstOrNull()?.uppercaseChar()?.toString() ?: "U",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF8D4934)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BlancoPuro)
@@ -124,7 +144,7 @@ fun PerrosPerdidosScreen(
                 NavigationBarItem(
                     selected = false,
                     onClick = onNavigateToCircular,
-                    icon = { Icon(Icons.Default.Eco, null) },
+                    icon = { Icon(Icons.Default.Autorenew, null) },
                     label = { Text("Circular", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFFE67E5D),
@@ -285,15 +305,28 @@ fun TarjetaPerroPerdido(perro: PerroPerdido) {
                 
                 Spacer(Modifier.height(12.dp))
                 
+                val context = LocalContext.current
                 Button(
-                    onClick = { /* Implementar llamada o WhatsApp */ },
+                    onClick = {
+                        if (perro.contacto.isNotBlank()) {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    // Abrir WhatsApp con un mensaje predefinido
+                                    data = Uri.parse("https://api.whatsapp.com/send?phone=${perro.contacto}&text=Hola, tengo información sobre ${perro.nombre} que vi en HuellitasApp")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No se pudo abrir WhatsApp", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = VerdeExito)
                 ) {
-                    Icon(Icons.Default.Phone, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Filled.Chat, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Contactar: ${perro.contacto}", fontWeight = FontWeight.Bold)
+                    Text("Contactar por WhatsApp", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -436,30 +469,37 @@ fun DialogoReportarPerdido(usuarioId: String, onDismiss: () -> Unit, onReportado
         confirmButton = {
             Button(
                 onClick = {
-                    if (contacto.isNotBlank() && zona.isNotBlank()) {
-                        scope.launch {
-                            subiendo = true
-                            
-                            val urlFoto = if (imagenUri != null) {
-                                repo.subirImagen(imagenUri!!, "lost_pets") ?: ""
-                            } else ""
+                    if (contacto.isBlank() || zona.isBlank()) {
+                        Toast.makeText(context, "Por favor indica el contacto y la zona", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    if (imagenUri == null) {
+                        Toast.makeText(context, "Por favor añade una foto para ayudar a identificarlo", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
 
-                            val nuevo = PerroPerdido(
-                                nombre = nombre,
-                                especie = especie,
-                                raza = raza,
-                                tamano = tamano,
-                                color = color,
-                                zona = zona,
-                                descripcion = descripcion,
-                                contacto = contacto,
-                                fotoUri = urlFoto,
-                                reporteroId = usuarioId
-                            )
-                            repo.reportarPerroPerdido(nuevo)
-                            subiendo = false
-                            onReportado()
-                        }
+                    scope.launch {
+                        subiendo = true
+                        
+                        val urlFoto = if (imagenUri != null) {
+                            repo.subirImagen(imagenUri!!, "lost_pets") ?: ""
+                        } else ""
+
+                        val nuevo = PerroPerdido(
+                            nombre = nombre,
+                            especie = especie,
+                            raza = raza,
+                            tamano = tamano,
+                            color = color,
+                            zona = zona,
+                            descripcion = descripcion,
+                            contacto = contacto,
+                            fotoUri = urlFoto,
+                            reporteroId = usuarioId
+                        )
+                        repo.reportarPerroPerdido(nuevo)
+                        subiendo = false
+                        onReportado()
                     }
                 },
                 enabled = !subiendo,

@@ -39,6 +39,7 @@ sealed class Pantalla {
     object MisSolicitudes : Pantalla()
     object SolicitudExito : Pantalla()
     object HistoriasAdopcion : Pantalla()
+    object PublicarHistoria  : Pantalla()
 }
 
 @Composable
@@ -127,7 +128,8 @@ fun HuellitasNavHost() {
                 onVolver = { pantallaActual = Pantalla.Principal },
                 onNavigateToCatalogo = { pantallaActual = Pantalla.Adopciones },
                 onNavigateToCircular = { pantallaActual = Pantalla.DonarArticulos },
-                onNavigateToImpacto = { pantallaActual = Pantalla.Impacto }
+                onNavigateToImpacto = { pantallaActual = Pantalla.Impacto },
+                onIrAPerfil = { pantallaActual = Pantalla.Perfil }
             )
         }
 
@@ -135,7 +137,8 @@ fun HuellitasNavHost() {
             MatchScreen(
                 usuario = usuarioActual!!,
                 onVolver = { pantallaActual = Pantalla.Principal },
-                onIrACatalogo = { pantallaActual = Pantalla.Adopciones }
+                onIrACatalogo = { pantallaActual = Pantalla.Adopciones },
+                onIrAPerfil = { pantallaActual = Pantalla.Perfil }
             )
         }
 
@@ -161,7 +164,17 @@ fun HuellitasNavHost() {
         is Pantalla.HistoriasAdopcion -> {
             BackHandler { pantallaActual = Pantalla.Adopciones }
             com.huellitas.app.ui.screens.adoption.HistoriasAdopcionScreen(
-                onVolver = { pantallaActual = Pantalla.Adopciones }
+                onVolver = { pantallaActual = Pantalla.Adopciones },
+                onIrAPublicar = { pantallaActual = Pantalla.PublicarHistoria }
+            )
+        }
+
+        is Pantalla.PublicarHistoria -> {
+            BackHandler { pantallaActual = Pantalla.HistoriasAdopcion }
+            com.huellitas.app.ui.screens.adoption.PublicarHistoriaScreen(
+                usuario = usuarioActual!!,
+                onVolver = { pantallaActual = Pantalla.HistoriasAdopcion },
+                onExito = { pantallaActual = Pantalla.HistoriasAdopcion }
             )
         }
 
@@ -199,7 +212,8 @@ fun HuellitasNavHost() {
                 onVolver = { pantallaActual = Pantalla.Principal },
                 onNavigateToCatalogo = { pantallaActual = Pantalla.Adopciones },
                 onNavigateToPerdidos = { pantallaActual = Pantalla.PerrosPerdidos },
-                onNavigateToCircular = { pantallaActual = Pantalla.DonarArticulos }
+                onNavigateToCircular = { pantallaActual = Pantalla.DonarArticulos },
+                onIrAPerfil = { pantallaActual = Pantalla.Perfil }
             )
         }
 

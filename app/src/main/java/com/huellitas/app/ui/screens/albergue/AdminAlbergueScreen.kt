@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -36,7 +37,8 @@ fun AdminAlbergueScreen(
     onVolver: () -> Unit,
     onEditarMascota: (PerroAdopcion) -> Unit
 ) {
-    val repo = remember { HuellitasRepository() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val repo = remember { HuellitasRepository(context) }
     val scope = rememberCoroutineScope()
     var tabSelected by remember { mutableStateOf(0) } // 0: Mascotas, 1: Solicitudes
     
@@ -57,7 +59,7 @@ fun AdminAlbergueScreen(
                 title = { Text("Administrar Albergue", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
-                        Icon(Icons.Default.ArrowBack, "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BlancoPuro)

@@ -139,8 +139,8 @@ fun DonarArticulosScreen(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
                 NavigationBarItem(
@@ -152,21 +152,21 @@ fun DonarArticulosScreen(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
                 NavigationBarItem(
                     selected = true,
                     onClick = { },
-                    icon = { Icon(Icons.Default.Eco, null) },
+                    icon = { Icon(Icons.Default.Autorenew, null) },
                     label = { Text("Circular", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
                 NavigationBarItem(
@@ -178,8 +178,8 @@ fun DonarArticulosScreen(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
             }
@@ -345,7 +345,7 @@ fun TarjetaArticuloGrid(articulo: ArticuloDonacion, onClick: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.Eco, 
+                            Icons.Default.Autorenew,
                             null, 
                             tint = Color(0xFF626F47), 
                             modifier = Modifier.size(12.dp)

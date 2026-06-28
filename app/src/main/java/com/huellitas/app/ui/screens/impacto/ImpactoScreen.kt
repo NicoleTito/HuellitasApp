@@ -24,12 +24,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import android.content.Intent
 import com.huellitas.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,22 +41,40 @@ fun ImpactoScreen(
     onVolver: () -> Unit,
     onNavigateToCatalogo: () -> Unit = {},
     onNavigateToPerdidos: () -> Unit = {},
-    onNavigateToCircular: () -> Unit = {}
+    onNavigateToCircular: () -> Unit = {},
+    onIrAPerfil: () -> Unit = {}
 ) {
-    val repo = remember { com.huellitas.app.data.repository.HuellitasRepository() }
+    val context = LocalContext.current
+    val repo = remember { com.huellitas.app.data.repository.HuellitasRepository(context) }
     val scope = rememberCoroutineScope()
     var isRefreshing by remember { mutableStateOf(false) }
     
     var donacionesRealizadas by remember { mutableIntStateOf(0) }
     var solicitudesAprobadas by remember { mutableIntStateOf(0) }
     var perrosPerdidosReportados by remember { mutableIntStateOf(0) }
+    var mascotasPublicadas by remember { mutableIntStateOf(0) }
+
+    var showBreakdown by remember { mutableStateOf(false) }
+    var showPurposeInfo by remember { mutableStateOf(false) }
+
+    val esAlbergue = usuario.rol == "albergue"
+    val totalPuntos = if (esAlbergue) {
+        (mascotasPublicadas * 50) + (solicitudesAprobadas * 300)
+    } else {
+        (donacionesRealizadas * 100) + (solicitudesAprobadas * 500) + (perrosPerdidosReportados * 200)
+    }
 
     val cargarDatos = {
         scope.launch {
             isRefreshing = true
-            donacionesRealizadas = repo.obtenerConteoDonacionesUsuario(usuario.id)
-            solicitudesAprobadas = repo.obtenerConteoAdopcionesUsuario(usuario.id)
-            perrosPerdidosReportados = repo.obtenerConteoPerrosPerdidosUsuario(usuario.id)
+            if (esAlbergue) {
+                mascotasPublicadas = repo.obtenerMisMascotas(usuario.id).size
+                solicitudesAprobadas = repo.obtenerSolicitudesRecibidas(usuario.id).count { it.estado == "aprobada" }
+            } else {
+                donacionesRealizadas = repo.obtenerConteoDonacionesUsuario(usuario.id)
+                solicitudesAprobadas = repo.obtenerConteoAdopcionesUsuario(usuario.id)
+                perrosPerdidosReportados = repo.obtenerConteoPerrosPerdidosUsuario(usuario.id)
+            }
             isRefreshing = false
         }
     }
@@ -82,7 +102,8 @@ fun ImpactoScreen(
                             .padding(end = 16.dp)
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFFDE7E1)),
+                            .background(Color(0xFFFDE7E1))
+                            .clickable { onIrAPerfil() },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -111,8 +132,8 @@ fun ImpactoScreen(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
                 NavigationBarItem(
@@ -124,21 +145,21 @@ fun ImpactoScreen(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
                 NavigationBarItem(
                     selected = false,
                     onClick = onNavigateToCircular,
-                    icon = { Icon(Icons.Default.Eco, null) },
+                    icon = { Icon(Icons.Default.Autorenew, null) },
                     label = { Text("Circular", fontSize = 10.sp) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
                 NavigationBarItem(
@@ -150,8 +171,8 @@ fun ImpactoScreen(
                         selectedIconColor = Color(0xFFE67E5D),
                         selectedTextColor = Color(0xFFE67E5D),
                         indicatorColor = Color(0xFFFDE7E1),
-                        unselectedIconColor = GrisTexto,
-                        unselectedTextColor = GrisTexto
+                        unselectedIconColor = GrisSecundario,
+                        unselectedTextColor = GrisSecundario
                     )
                 )
             }
@@ -213,19 +234,25 @@ fun ImpactoScreen(
                         Spacer(Modifier.width(16.dp))
                         
                         Column {
-                            Text(usuario.nombre, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D1B20))
-                            Text("GUARDIÁN DE LA TIERRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8D4934).copy(alpha = 0.7f))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(usuario.nombre, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D1B20))
+                                IconButton(onClick = { showPurposeInfo = true }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Default.Info, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            Text(if (esAlbergue) "CENTRO DE ESPERANZA" else "GUARDIÁN DE LA TIERRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8D4934).copy(alpha = 0.7f))
                             Spacer(Modifier.height(8.dp))
-                            val progreso = ((donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados) % 2) * 0.5f
+                            val factor = if (esAlbergue) (mascotasPublicadas + solicitudesAprobadas) else (donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados)
+                            val progreso = (factor % 2) * 0.5f
                             LinearProgressIndicator(
-                                progress = { if (progreso == 0f && (donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados) > 0) 1f else progreso.coerceAtLeast(0.1f) },
+                                progress = { if (progreso == 0f && factor > 0) 1f else progreso.coerceAtLeast(0.1f) },
                                 modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
                                 color = Color(0xFF626F47),
                                 trackColor = Color(0xFFEEEEEE)
                             )
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Puntos Huella: ${(donacionesRealizadas * 100) + (solicitudesAprobadas * 500) + (perrosPerdidosReportados * 200)}", fontSize = 10.sp, color = Color.Gray)
-                                Text("Nivel: ${1 + (donacionesRealizadas + solicitudesAprobadas + perrosPerdidosReportados)/2}", fontSize = 10.sp, color = Color.Gray)
+                                Text("Puntos Huella: $totalPuntos", fontSize = 10.sp, color = Color.Gray)
+                                Text("Nivel: ${1 + factor/2}", fontSize = 10.sp, color = Color.Gray)
                             }
                         }
                     }
@@ -236,22 +263,36 @@ fun ImpactoScreen(
                 Spacer(Modifier.height(12.dp))
                 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MedallaItem("Donante Oro", Icons.Default.VolunteerActivism, 
-                        if (donacionesRealizadas > 5) Color(0xFFF1F8E9) else Color(0xFFF5F5F5), 
-                        if (donacionesRealizadas > 5) Color(0xFF558B2F) else Color(0xFF616161), 
-                        Modifier.weight(1f))
-                    MedallaItem("Eco Amigo", Icons.Default.Eco, 
-                        if (donacionesRealizadas > 0) Color(0xFFFCE4EC) else Color(0xFFF5F5F5), 
-                        if (donacionesRealizadas > 0) Color(0xFF880E4F) else Color(0xFF616161), 
-                        Modifier.weight(1f))
-                    MedallaItem("Adoptante", Icons.Default.Pets, 
-                        if (solicitudesAprobadas > 0) Color(0xFFE8EAF6) else Color(0xFFF5F5F5), 
-                        if (solicitudesAprobadas > 0) Color(0xFF3F51B5) else Color(0xFF616161), 
-                        Modifier.weight(1f))
-                    MedallaItem("Rescatista", Icons.Default.Handshake, 
-                        if (perrosPerdidosReportados > 0) Color(0xFFFFF3E0) else Color(0xFFF5F5F5), 
-                        if (perrosPerdidosReportados > 0) Color(0xFFE65100) else Color(0xFF616161), 
-                        Modifier.weight(1f))
+                    if (esAlbergue) {
+                        MedallaItem("Hogar Activo", Icons.Default.Home, 
+                            if (mascotasPublicadas > 5) Color(0xFFF1F8E9) else Color(0xFFF5F5F5), 
+                            if (mascotasPublicadas > 5) Color(0xFF558B2F) else Color(0xFF616161), 
+                            Modifier.weight(1f))
+                        MedallaItem("Gran Puente", Icons.Default.Handshake, 
+                            if (solicitudesAprobadas > 3) Color(0xFFFCE4EC) else Color(0xFFF5F5F5), 
+                            if (solicitudesAprobadas > 3) Color(0xFF880E4F) else Color(0xFF616161), 
+                            Modifier.weight(1f))
+                        MedallaItem("Verificado", Icons.Default.Verified, 
+                            Color(0xFFE8EAF6), Color(0xFF3F51B5), 
+                            Modifier.weight(1f))
+                    } else {
+                        MedallaItem("Donante Oro", Icons.Default.VolunteerActivism, 
+                            if (donacionesRealizadas > 5) Color(0xFFF1F8E9) else Color(0xFFF5F5F5), 
+                            if (donacionesRealizadas > 5) Color(0xFF558B2F) else Color(0xFF616161), 
+                            Modifier.weight(1f))
+                        MedallaItem("Eco Amigo", Icons.Default.Eco, 
+                            if (donacionesRealizadas > 0) Color(0xFFFCE4EC) else Color(0xFFF5F5F5), 
+                            if (donacionesRealizadas > 0) Color(0xFF880E4F) else Color(0xFF616161), 
+                            Modifier.weight(1f))
+                        MedallaItem("Adoptante", Icons.Default.Pets, 
+                            if (solicitudesAprobadas > 0) Color(0xFFE8EAF6) else Color(0xFFF5F5F5), 
+                            if (solicitudesAprobadas > 0) Color(0xFF3F51B5) else Color(0xFF616161), 
+                            Modifier.weight(1f))
+                        MedallaItem("Rescatista", Icons.Default.Handshake, 
+                            if (perrosPerdidosReportados > 0) Color(0xFFFFF3E0) else Color(0xFFF5F5F5), 
+                            if (perrosPerdidosReportados > 0) Color(0xFFE65100) else Color(0xFF616161), 
+                            Modifier.weight(1f))
+                    }
                 }
     
                 Spacer(Modifier.height(24.dp))
@@ -266,12 +307,17 @@ fun ImpactoScreen(
                         Text("Calculadora de Impacto", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(16.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            ImpactoBox("${solicitudesAprobadas}", "Mascotas con nuevo hogar", Icons.Default.Home, Modifier.weight(1f))
-                            ImpactoBox("${donacionesRealizadas}", "Artículos donados", Icons.Default.Autorenew, Modifier.weight(1f))
+                            if (esAlbergue) {
+                                ImpactoBox("${mascotasPublicadas}", "Huellitas publicadas", Icons.Default.Pets, Modifier.weight(1f))
+                                ImpactoBox("${solicitudesAprobadas}", "Finales felices (Adopciones)", Icons.Default.Favorite, Modifier.weight(1f))
+                            } else {
+                                ImpactoBox("${solicitudesAprobadas}", "Mascotas con nuevo hogar", Icons.Default.Home, Modifier.weight(1f))
+                                ImpactoBox("${donacionesRealizadas}", "Artículos re-circulados", Icons.Default.Autorenew, Modifier.weight(1f))
+                            }
                         }
                         Spacer(Modifier.height(16.dp))
                         Button(
-                            onClick = { },
+                            onClick = { showBreakdown = true },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                             shape = RoundedCornerShape(12.dp)
@@ -336,13 +382,110 @@ fun ImpactoScreen(
                             Text("Invita a un amigo", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text("Gana 50 puntos huella por cada amigo que se una.", fontSize = 12.sp, color = Color.Gray)
                         }
-                        IconButton(onClick = { }) {
+                        IconButton(onClick = {
+                            val sendIntent: Intent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, "¡Únete a HuellasHogar y ayúdanos a dar segundas oportunidades a perritos que lo necesitan! Descarga la app aquí: https://huellitasapp.example.com")
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, null)
+                            context.startActivity(shareIntent)
+                        }) {
                             Icon(Icons.Default.ChevronRight, null)
                         }
                     }
                 }
                 
                 Spacer(Modifier.height(40.dp))
+            }
+
+            // Modal Desglose
+            if (showBreakdown) {
+                ModalBottomSheet(
+                    onDismissRequest = { showBreakdown = false },
+                    sheetState = rememberModalBottomSheetState(),
+                    containerColor = Color.White
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                    ) {
+                        Text("Tu Impacto en Detalle", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF8D4934))
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            if (esAlbergue) "Este es el resumen de la esperanza que has generado a través de tu gestión."
+                            else "Aquí tienes el desglose de cómo has acumulado tus Puntos Huella hasta hoy.", 
+                            fontSize = 14.sp, color = Color.Gray
+                        )
+                        
+                        Spacer(Modifier.height(24.dp))
+                        
+                        if (esAlbergue) {
+                            BreakdownRow("Huellitas Publicadas", mascotasPublicadas, 50, Icons.Default.Pets)
+                            HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color.Gray.copy(alpha = 0.1f))
+                            BreakdownRow("Adopciones Concretadas", solicitudesAprobadas, 300, Icons.Default.ThumbUp)
+                        } else {
+                            BreakdownRow("Adopciones Aprobadas", solicitudesAprobadas, 500, Icons.Default.Pets)
+                            HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color.Gray.copy(alpha = 0.1f))
+                            BreakdownRow("Donaciones Realizadas", donacionesRealizadas, 100, Icons.Default.VolunteerActivism)
+                            HorizontalDivider(Modifier.padding(vertical = 12.dp), color = Color.Gray.copy(alpha = 0.1f))
+                            BreakdownRow("Reportes de Extravío", perrosPerdidosReportados, 200, Icons.Default.Search)
+                        }
+                        
+                        Spacer(Modifier.height(32.dp))
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFFDE7E1))
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Total Puntos Huella", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF8D4934))
+                            Text("$totalPuntos", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = Color(0xFF8D4934))
+                        }
+                        
+                        Spacer(Modifier.height(40.dp))
+                    }
+                }
+            }
+
+            // Dialog Propósito
+            if (showPurposeInfo) {
+                AlertDialog(
+                    onDismissRequest = { showPurposeInfo = false },
+                    confirmButton = {
+                        TextButton(onClick = { showPurposeInfo = false }) {
+                            Text("Entendido", color = Color(0xFF8D4934), fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    title = { Text(if (esAlbergue) "Propósito del Albergue" else "¿Por qué el Impacto?", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column {
+                            Text(
+                                if (esAlbergue) "Tu rol como albergue es el pilar de HuellasHogar. Tu impacto mide cuántas vidas has logrado conectar."
+                                else "En HuellasHogar, cada acción que realizas tiene un valor real para nuestra comunidad animal.",
+                                fontSize = 14.sp
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                if (esAlbergue) "• El Nivel muestra tu trayectoria y confiabilidad.\n" +
+                                               "• Publicar mascotas te otorga puntos de visibilidad.\n" +
+                                               "• Las adopciones exitosas son tu mayor indicador de éxito."
+                                else "• El Nivel refleja tu compromiso social.\n" +
+                                     "• Los Puntos te permitirán pronto canjear beneficios con marcas aliadas.\n" +
+                                     "• Tu actividad motiva a otros a participar en la economía circular y la tenencia responsable.",
+                                fontSize = 14.sp,
+                                color = Color.DarkGray
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(20.dp),
+                    containerColor = Color.White
+                )
             }
 
             // Overlay de carga (Shimmer/Progress)
@@ -391,6 +534,24 @@ fun ImpactoBox(valor: String, descripcion: String, icono: ImageVector, modifier:
             Text(valor, fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color.White)
             Text(descripcion, fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f), lineHeight = 12.sp)
         }
+    }
+}
+
+@Composable
+fun BreakdownRow(titulo: String, cantidad: Int, multiplicador: Int, icono: ImageVector) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFF5F5F5)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icono, null, tint = Color.DarkGray, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(titulo, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("$cantidad x $multiplicador pts", fontSize = 12.sp, color = Color.Gray)
+        }
+        Text("+${cantidad * multiplicador}", fontWeight = FontWeight.Bold, color = Color(0xFF626F47))
     }
 }
 

@@ -309,6 +309,16 @@ class HuellitasRepository(context: Context? = null) {
         return docRef.id
     }
 
+    suspend fun marcarPerroEncontrado(perroId: String): Boolean {
+        return try {
+            db.collection("lost_pets").document(perroId)
+                .update("estado", "encontrado").await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     // ─────────────────────────────────────────
     //  IMPACTO (CONTEOS)
     // ─────────────────────────────────────────
@@ -348,4 +358,65 @@ class HuellitasRepository(context: Context? = null) {
     }
 
     private fun fechaActual(): String = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+    // ─────────────────────────────────────────
+    //  HISTORIAS DE ADOPCIÓN
+    // ─────────────────────────────────────────
+
+    suspend fun obtenerHistoriasAdopcion(): List<com.huellitas.app.data.model.HistoriaAdopcion> {
+        return try {
+            val snapshot = db.collection("stories")
+                .orderBy("fechaPublicacion", Query.Direction.DESCENDING)
+                .get().await()
+            snapshot.toObjects(com.huellitas.app.data.model.HistoriaAdopcion::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun agregarHistoria(historia: com.huellitas.app.data.model.HistoriaAdopcion): String {
+        val docRef = db.collection("stories").document()
+        val finalHist = historia.copy(id = docRef.id, fechaPublicacion = fechaActual())
+        docRef.set(finalHist).await()
+        return docRef.id
+    }
+
+    // ─────────────────────────────────────────
+    //  FAVORITOS
+    // ─────────────────────────────────────────
+
+    suspend fun esFavorito(usuarioId: String, perroId: String): Boolean {
+        return try {
+            val doc = db.collection("users").document(usuarioId)
+                .collection("favoritos").document(perroId).get().await()
+            doc.exists()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun obtenerFavoritosIds(usuarioId: String): Set<String> {
+        return try {
+            val snapshot = db.collection("users").document(usuarioId)
+                .collection("favoritos").get().await()
+            snapshot.documents.map { it.id }.toSet()
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+
+    suspend fun toggleFavorito(usuarioId: String, perroId: String) {
+        try {
+            val ref = db.collection("users").document(usuarioId)
+                .collection("favoritos").document(perroId)
+            val doc = ref.get().await()
+            if (doc.exists()) {
+                ref.delete().await()
+            } else {
+                ref.set(mapOf("fecha" to fechaActual())).await()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }
